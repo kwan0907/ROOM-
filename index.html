@@ -3,243 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>簡樸房管理系統 V11 (動態合夥人版)</title>
+    <title>簡樸房管理系統 V13 (滾存分紅版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         [v-cloak] { display: none; }
-        body { background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
-        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        body { background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .tab-active { background-color: #2563eb; color: white; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
     </style>
 </head>
 <body class="text-slate-800 font-sans pb-24">
     <div id="app" v-cloak class="max-w-md mx-auto md:max-w-5xl md:p-6">
         
         <div v-if="!session" class="p-6 mt-10 bg-white rounded-3xl shadow-xl mx-4">
-            <h2 class="text-2xl font-black text-center mb-8 text-slate-800">{{ isRegistering ? '註冊觀看帳號' : '系統登入' }}</h2>
+            <h2 class="text-2xl font-black text-center mb-8 text-slate-800">系統登入</h2>
             <div class="space-y-4">
-                <input v-model="email" type="email" placeholder="電郵地址" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                <button @click="handleAuth" :disabled="loading" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform">
-                    {{ loading ? '請稍候...' : (isRegistering ? '註冊帳號' : '登入系統') }}
-                </button>
-                <button @click="isRegistering = !isRegistering" class="w-full text-slate-400 hover:text-blue-600 text-sm font-semibold transition-colors">
-                    {{ isRegistering ? '返回登入' : '還沒帳號？按此註冊' }}
-                </button>
+                <input v-model="email" type="email" placeholder="電郵地址" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <button @click="handleAuth" :disabled="loading" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform">登入</button>
             </div>
         </div>
 
         <div v-else>
-            <div class="sticky top-0 z-40 bg-white/90 backdrop-blur-md px-4 py-3 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="flex items-center gap-2 w-full md:w-auto justify-between">
-                    <h1 class="text-xl font-black text-slate-800">簡樸房管理</h1>
-                    <span v-if="isAdmin" class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-md">管理員</span>
-                    <span v-else class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md">合夥觀看者</span>
+            <div class="sticky top-0 z-40 bg-white/80 backdrop-blur-md px-4 py-3 shadow-sm mb-6 flex justify-between items-center">
+                <div class="flex flex-col">
+                    <h1 class="text-lg font-black leading-tight">簡樸房系統</h1>
+                    <span class="text-[10px] font-bold text-blue-600">{{ isAdmin ? '管理員模式' : '合夥人模式' }}</span>
                 </div>
-
-                <div class="flex items-center bg-white p-1 rounded-2xl shadow-sm border border-slate-200 w-full md:w-auto justify-between flex-1 md:max-w-xs">
-                    <button @click="changeMonth(-1)" class="p-3 text-slate-400 hover:text-blue-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg></button>
-                    <div class="relative flex-1 text-center py-1 cursor-pointer">
-                        <span class="text-xl font-black text-blue-700 block">{{ displayMonth }}</span>
-                        <input type="month" v-model="currentMonth" @change="fetchData" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-                    </div>
-                    <button @click="changeMonth(1)" class="p-3 text-slate-400 hover:text-blue-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg></button>
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button @click="changeMonth(-1)" class="p-2 text-slate-400 hover:text-blue-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg></button>
+                    <span class="px-3 font-black text-slate-700 text-sm">{{ displayMonth }}</span>
+                    <button @click="changeMonth(1)" class="p-2 text-slate-400 hover:text-blue-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg></button>
                 </div>
-
-                <button @click="handleLogout" class="p-2 bg-red-50 rounded-full text-red-400 hover:text-red-600 self-end md:self-auto"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+                <button @click="handleLogout" class="p-2 text-slate-400 hover:text-red-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
             </div>
 
-            <div class="flex justify-between px-4 mb-6 bg-white rounded-2xl shadow-sm mx-4 p-1">
-                <button @click="activeTab = 'rent'" :class="activeTab === 'rent' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:bg-slate-50'" class="flex-1 py-2 rounded-xl text-sm font-bold transition-all">🏠 租務</button>
-                <button @click="activeTab = 'profit'" :class="activeTab === 'profit' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:bg-slate-50'" class="flex-1 py-2 rounded-xl text-sm font-bold transition-all">💰 分紅</button>
-                <button v-if="isAdmin" @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:bg-slate-50'" class="flex-1 py-2 rounded-xl text-sm font-bold transition-all">⚙️ 設定</button>
+            <div class="flex gap-2 px-4 mb-6">
+                <button @click="activeTab = 'rent'" :class="{'tab-active': activeTab === 'rent'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 transition-all">🏠 租務管理</button>
+                <button @click="activeTab = 'profit'" :class="{'tab-active': activeTab === 'profit'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 transition-all">💰 樓宇分紅</button>
+                <button v-if="isAdmin" @click="activeTab = 'settings'" :class="{'tab-active': activeTab === 'settings'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 transition-all">⚙️ 系統設定</button>
             </div>
 
             <div v-if="activeTab === 'rent'">
-                <div v-if="Object.keys(visibleGroupedRooms).length === 0" class="text-center p-10 text-slate-400 font-bold">
-                    目前沒有可顯示的房間。請聯絡管理員開通觀看權限。
-                </div>
-
                 <div v-for="(rooms, propName) in visibleGroupedRooms" :key="propName" class="px-4 mb-8">
-                    <div class="mb-4 bg-slate-800 text-white p-4 rounded-3xl shadow-lg">
-                        <h2 class="text-2xl font-black mb-3">{{ propName }}</h2>
-                        <div class="flex justify-between items-center bg-slate-700 p-3 rounded-2xl">
-                            <span class="text-xs font-bold text-slate-300">大電單總計</span>
-                            <div class="flex gap-2">
-                                <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" placeholder="$總額" class="w-16 p-1 bg-slate-600 text-white rounded text-center text-sm outline-none focus:ring-1 focus:ring-blue-400">
-                                <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" placeholder="總度" class="w-16 p-1 bg-slate-600 text-white rounded text-center text-sm outline-none focus:ring-1 focus:ring-blue-400">
+                    <div class="mb-4 bg-slate-800 text-white p-5 rounded-3xl shadow-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-xl font-black">{{ propName }}</h2>
+                            <span class="text-[10px] bg-blue-600 px-2 py-1 rounded-md">結算月份: {{ currentMonth }}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 bg-slate-700 p-3 rounded-2xl">
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-1 font-bold italic">本單總金額 ($)</label>
+                                <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-slate-600 p-2 rounded-xl text-center font-black outline-none focus:ring-1 focus:ring-blue-400">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-1 font-bold italic">本單總度數</label>
+                                <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-slate-600 p-2 rounded-xl text-center font-black outline-none focus:ring-1 focus:ring-blue-400">
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="space-y-4">
                         <div v-for="room in rooms" :key="room.id" class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 class="text-2xl font-black text-slate-800">{{ room.room_name }}</h3>
-                                    <input v-model="room.nickname" @blur="updateRoom(room)" :disabled="!isAdmin" placeholder="租客姓名" class="text-sm font-bold text-slate-400 bg-transparent border-b border-slate-200 outline-none mt-1 w-full focus:border-blue-400 focus:text-slate-700">
+                                    <h3 class="text-xl font-black text-slate-800">{{ room.room_name }}</h3>
+                                    <input v-model="room.nickname" @blur="updateRoom(room)" :disabled="!isAdmin" class="text-xs font-bold text-slate-400 bg-transparent border-b w-full outline-none focus:border-blue-500">
                                 </div>
-                                <span v-if="room.record.rent_paid" class="px-2 py-1 bg-green-100 text-green-700 font-black text-xs rounded-lg">已交租</span>
+                                <button v-if="isAdmin" @click="resetTenant(room)" class="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg">退租結清</button>
                             </div>
 
-                            <div class="space-y-3 bg-slate-50 p-3 rounded-2xl mb-4 text-sm font-bold">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-slate-500">底租</span>
-                                    <div class="flex items-center font-black text-slate-700 bg-white px-2 py-1 rounded border border-slate-200">
-                                        $<input v-model="room.base_rent" @blur="updateRoom(room)" :disabled="!isAdmin" type="number" class="w-16 text-right bg-transparent outline-none">
-                                    </div>
+                            <div class="space-y-2 mb-4 bg-slate-50 p-3 rounded-2xl text-xs font-bold">
+                                <div class="flex justify-between"><span>底租加價</span><span>$<input v-model="room.base_rent" @blur="updateRoom(room)" :disabled="!isAdmin" type="number" class="w-12 text-right bg-transparent border-b border-slate-200 outline-none"></span></div>
+                                <div class="flex justify-between text-blue-600"><span>電費分攤 ({{ room.record.electricity_units || 0 }}度)</span><span>${{ calculateActualFee(propName, room) }}</span></div>
+                                <div class="flex justify-between text-cyan-600"><span>水費收費</span><span>$<input v-model="room.record.water_fee" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" class="w-12 text-right bg-transparent border-b border-slate-200 outline-none"></span></div>
+                                
+                                <div v-if="room.prevDebt > 0" class="flex justify-between text-red-500 border-t border-slate-200 pt-2">
+                                    <span>⚠️ 上月未清欠款</span>
+                                    <span>${{ room.prevDebt }}</span>
+                                </div>
+
+                                <div class="flex justify-between text-slate-900 border-t border-slate-200 pt-2 text-sm">
+                                    <span>本月應收總計</span>
+                                    <span class="font-black text-blue-700">${{ getTotalPayable(propName, room) }}</span>
                                 </div>
                                 
-                                <div class="flex justify-between text-blue-600"><span>電費 (上:{{room.record.prev_reading||0}} 本:{{room.record.curr_reading||0}})</span><span>${{ calculateActualFee(propName, room) }}</span></div>
-                                <div class="flex justify-between text-cyan-600"><span>水費</span><span>${{ room.record.water_fee || 0 }}</span></div>
-                                <hr class="border-slate-200 border-dashed my-2">
-                                <div class="flex justify-between text-blue-900">
-                                    <span>租客已實付總額</span>
-                                    <div class="flex items-center border-b border-blue-300">
-                                        $<input v-model="room.record.amount_paid" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" class="w-16 text-right bg-transparent outline-none">
+                                <div class="mt-2 flex justify-between items-center bg-white p-2 rounded-xl border border-slate-200 shadow-inner">
+                                    <span class="text-slate-500">租客實際已付</span>
+                                    <div class="flex items-center text-lg font-black text-slate-800">
+                                        $<input v-model="room.record.amount_paid" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="0" class="w-20 text-right bg-transparent outline-none border-b-2 border-blue-200 focus:border-blue-500">
                                     </div>
                                 </div>
                             </div>
 
                             <div class="flex items-center justify-between">
+                                <div class="text-[10px] font-bold" :class="getBalanceInfo(propName, room).color">
+                                    {{ getBalanceInfo(propName, room).text }}
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <select v-if="room.record.amount_paid > 0 && isAdmin" v-model="room.record.payment_account" @change="saveRecord(room)" class="text-[10px] font-bold p-1 bg-slate-100 rounded border-none outline-none">
+                                        <option :value="null">選擇收款入帳</option>
+                                        <option value="公司">公司戶口</option>
+                                        <option v-for="p in partners" :key="p.id" :value="p.name">{{ p.name }}戶口</option>
+                                    </select>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" v-model="room.record.rent_paid" @change="saveRecord(room)" :disabled="!isAdmin" class="sr-only">
+                                        <div class="block w-10 h-5 rounded-full transition-colors" :class="room.record.rent_paid ? 'bg-green-500' : 'bg-slate-200'"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'profit'" class="px-4">
+                <div class="bg-slate-900 p-6 rounded-[2.5rem] shadow-2xl text-white">
+                    <h2 class="text-2xl font-black mb-1 italic text-blue-400">Profit Report</h2>
+                    <p class="text-xs text-slate-500 mb-8 uppercase tracking-widest">Property Level Settlement</p>
+
+                    <div v-for="(pData, pName) in propertyReport" :key="pName" class="mb-10 last:mb-0 border-b border-slate-800 pb-8 last:border-0">
+                        <div class="flex justify-between items-baseline mb-6">
+                            <h3 class="text-3xl font-black tracking-tighter">{{ pName }}</h3>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-500 font-bold block">物業總收益</span>
+                                <span class="text-xl font-bold text-blue-400 tracking-tighter">+${{ pData.netProfit }}</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div v-for="share in pData.partnerShares" :key="share.name" class="bg-slate-800 p-4 rounded-3xl flex justify-between items-center border border-slate-700">
                                 <div>
-                                    <p class="text-[10px] text-slate-400 font-bold uppercase">結算</p>
-                                    <p class="text-lg font-black" :class="getBalanceInfo(propName, room).color">{{ getBalanceInfo(propName, room).text }}</p>
+                                    <span class="text-sm font-black block">{{ share.name }}</span>
+                                    <span class="text-[10px] text-slate-500">{{ share.percent }}% 股權</span>
                                 </div>
-                                <label class="flex items-center cursor-pointer">
-                                    <input type="checkbox" v-model="room.record.rent_paid" @change="saveRecord(room)" :disabled="!isAdmin" class="sr-only">
-                                    <div class="block w-12 h-6 rounded-full transition-colors" :class="room.record.rent_paid ? 'bg-blue-500' : 'bg-slate-200'"></div>
-                                    <span class="ml-2 text-xs font-bold" :class="room.record.rent_paid?'text-blue-600':'text-slate-400'">確認</span>
-                                </label>
-                            </div>
-
-                            <div v-if="room.record.rent_paid" class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 transition-all">
-                                <p class="text-[10px] font-bold text-slate-500 mb-2 text-center uppercase tracking-wider">將資金存入</p>
-                                <div class="flex flex-wrap gap-2">
-                                    <button v-for="acc in ['公司', ...partners.map(p=>p.name)]" :key="acc" 
-                                            @click="isAdmin && setAccount(room, acc)" :disabled="!isAdmin" 
-                                            class="flex-1 min-w-[30%] py-2 rounded-lg text-xs font-black transition-all disabled:opacity-80 border shadow-sm" 
-                                            :class="room.record.payment_account === acc ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'">
-                                        {{ acc === '公司' ? '🏢' : '👤' }} {{ acc }}
-                                    </button>
+                                <div class="text-right">
+                                    <span class="text-lg font-black" :class="share.profit >= 0 ? 'text-green-400' : 'text-red-400'">${{ share.profit }}</span>
+                                    <span v-if="share.reimbursement > 0" class="block text-[10px] text-orange-400">+${{ share.reimbursement }} 代墊退款</span>
                                 </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div v-if="activeTab === 'profit'" class="px-4 mb-8">
-                <div v-if="isAdmin" class="bg-white p-5 rounded-3xl shadow-sm mb-6 border border-orange-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">🛠️ 新增雜費墊支</h3>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <select v-model="newExpense.room_id" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                            <option value="">選擇房間</option>
-                            <option v-for="r in rawRooms" :key="r.id" :value="r.id">{{ r.property_name }} - {{ r.room_name }}</option>
-                        </select>
-                        <select v-model="newExpense.partner_name" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                            <option value="">由誰墊支？</option>
-                            <option v-for="p in partners" :key="p.id" :value="p.name">{{ p.name }}</option>
-                        </select>
-                        <input v-model="newExpense.amount" type="number" placeholder="墊支金額 ($)" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                        <input v-model="newExpense.description" placeholder="用途 (如: 換鎖)" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                    </div>
-                    <button @click="addExpense" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 shadow-md">新增墊支紀錄</button>
-                </div>
-
-                <div v-if="expenses.length > 0" class="mb-6 bg-orange-50 p-4 rounded-2xl border border-orange-100">
-                    <p class="text-sm font-black text-orange-800 mb-2">本月墊支清單</p>
-                    <div v-for="exp in expenses" :key="exp.id" class="flex justify-between items-center text-sm font-bold text-slate-700 mb-2 border-b border-orange-200 pb-2">
-                        <span>{{ getRoomName(exp.room_id) }} - {{ exp.description }} <span class="bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full text-[10px]">{{ exp.partner_name }} 代墊</span></span>
-                        <span class="text-orange-600 font-black">${{ exp.amount }}</span>
-                    </div>
-                </div>
-
-                <div class="bg-slate-800 p-5 rounded-3xl shadow-lg">
-                    <h3 class="text-xl font-black text-white mb-4">💰 本月利潤分紅</h3>
-                    <p class="text-xs text-slate-400 mb-4">按房間股權獨立結算。已自動扣除電水及雜費，並加回代墊款項。</p>
-                    <div class="space-y-3">
-                        <div v-for="(data, pName) in profitReport" :key="pName" class="bg-slate-700 p-4 rounded-2xl">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="font-black text-white text-lg">{{ pName }}</span>
-                                <span class="text-2xl font-black" :class="data.totalPayout >= 0 ? 'text-green-400' : 'text-red-400'">${{ data.totalPayout }}</span>
-                            </div>
-                            <div class="flex justify-between text-xs font-bold text-slate-300 bg-slate-800 p-2 rounded-xl">
-                                <span>純利分紅: ${{ data.profitShare }}</span>
-                                <span class="text-orange-400">墊支退款: +${{ data.reimbursement }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div v-if="activeTab === 'settings' && isAdmin" class="px-4 mb-8 space-y-6">
-                
-                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-4">👤 合夥人名單建檔 <span class="text-xs text-slate-400 font-normal ml-2">(點擊名字可修改)</span></h3>
-                    <div class="flex gap-2 mb-4">
-                        <input v-model="newPartnerName" placeholder="輸入新合夥人姓名" class="flex-1 p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                        <button @click="addPartner" class="bg-blue-600 text-white font-bold px-4 rounded-xl shadow-md">新增</button>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        <div v-for="p in partners" :key="p.id" class="flex items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                            <span class="mr-2 text-slate-400">👤</span>
-                            <input v-model="p.editName" @blur="updatePartnerName(p)" class="w-full bg-transparent font-black text-slate-700 outline-none text-sm placeholder-slate-400">
-                        </div>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-3">* 修改名字後，系統會自動同步更新過去的帳單與股份紀錄。</p>
-                </div>
-
-                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-4">📊 房間股份設定</h3>
-                    <div v-for="room in rawRooms" :key="room.id" class="mb-4 bg-slate-50 p-4 rounded-2xl">
-                        <h4 class="font-bold text-blue-800 mb-3">{{ room.property_name }} - {{ room.room_name }}</h4>
-                        <div v-for="p in partners" :key="p.id" class="flex items-center justify-between mb-2">
+            <div v-if="activeTab === 'settings' && isAdmin" class="px-4 space-y-6">
+                <div class="bg-white p-6 rounded-3xl shadow-sm">
+                    <h3 class="font-black mb-4">🏢 物業整層股份設定</h3>
+                    <div v-for="pName in ['康樂', '平安']" :key="pName" class="mb-6 last:mb-0 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p class="font-black text-blue-700 mb-3 text-lg">{{ pName }}</p>
+                        <div v-for="p in partners" :key="p.id" class="flex justify-between items-center mb-3">
                             <span class="text-sm font-bold text-slate-600">{{ p.name }}</span>
-                            <div class="flex items-center">
-                                <input type="number" :value="getShare(room.id, p.name)" @change="e => updateShare(room.id, p.name, e.target.value)" class="w-16 p-1 text-right border rounded bg-white font-bold text-sm outline-none focus:border-blue-500">
-                                <span class="ml-1 text-sm font-bold text-slate-400">%</span>
+                            <div class="flex items-center gap-1">
+                                <input type="number" :value="getPropertyShare(pName, p.name)" @change="e => updatePropertyShare(pName, p.name, e.target.value)" class="w-16 p-2 text-right rounded-xl border-none bg-white font-black text-sm shadow-inner">
+                                <span class="text-slate-400 font-bold">%</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-4">🔐 登入帳號權限與授權房間</h3>
-                    <p class="text-xs text-slate-400 mb-4">決定誰能登入系統，以及「觀看者」能看見哪些房間。</p>
-                    <div v-for="user in usersList" :key="user.id" class="mb-4 p-3 border border-slate-200 rounded-xl">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-sm font-bold text-slate-800">{{ user.email }}</span>
-                            <select v-model="user.role" @change="updateUserRole(user)" class="bg-slate-100 border-none text-xs font-bold p-1.5 rounded-lg outline-none" :disabled="user.id === session.user.id">
-                                <option value="admin">管理員 (看全部)</option>
-                                <option value="viewer">觀看者 (受限)</option>
-                            </select>
-                        </div>
-                        <div v-if="user.role === 'viewer'" class="bg-slate-50 p-2 rounded-lg">
-                            <p class="text-[10px] font-bold text-slate-400 mb-2">授權可視房間 (打勾代表可看)：</p>
-                            <div class="flex flex-wrap gap-2">
-                                <label v-for="room in rawRooms" :key="room.id" class="flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
-                                    <input type="checkbox" :checked="hasRoomAccess(user.id, room.id)" @change="toggleRoomAccess(user.id, room.id)" class="text-blue-500 rounded focus:ring-0">
-                                    <span class="text-[10px] font-bold text-slate-600">{{ room.property_name }}-{{ room.room_name }}</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-
-                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-4">🏠 新增房源</h3>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <input v-model="newRoom.property_name" placeholder="物業" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                        <input v-model="newRoom.room_name" placeholder="房號" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                        <input v-model="newRoom.base_rent" type="number" placeholder="底租" class="col-span-2 p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                    </div>
-                    <button @click="addRoom" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md">建立房間</button>
-                </div>
-            </div>
 
         </div>
     </div>
@@ -252,74 +176,45 @@
         const app = Vue.createApp({
             data() {
                 return {
-                    session: null, currentUserRole: 'viewer', usersList: [],
-                    activeTab: 'rent', email: '', password: '', isRegistering: false, loading: false,
+                    session: null, currentUserRole: 'viewer', activeTab: 'rent',
+                    email: '', password: '', loading: false,
                     currentMonth: new Date().toISOString().slice(0, 7),
-                    rawRooms: [], electricityTotals: {}, shares: [], expenses: [],
-                    partners: [], userRoomAccess: [], newPartnerName: '',
-                    newRoom: { property_name: '', room_name: '', nickname: '', base_rent: '' },
-                    newExpense: { room_id: '', partner_name: '', amount: '', description: '' }
+                    rawRooms: [], electricityTotals: {}, partners: [], propShares: [], expenses: []
                 }
             },
             computed: {
                 isAdmin() { return this.currentUserRole === 'admin'; },
-                displayMonth() { return this.currentMonth ? `${this.currentMonth.split('-')[0]}年 ${this.currentMonth.split('-')[1]}月` : ''; },
+                displayMonth() { const [y, m] = this.currentMonth.split('-'); return `${y}年 ${m}月`; },
                 
                 visibleGroupedRooms() {
                     const groups = {};
                     this.rawRooms.forEach(room => {
-                        let canView = false;
-                        if (this.isAdmin) canView = true;
-                        else if (this.session) {
-                            canView = this.userRoomAccess.some(a => a.user_id === this.session.user.id && a.room_id === room.id);
-                        }
-
-                        if (canView) {
-                            if (!groups[room.property_name]) {
-                                groups[room.property_name] = [];
-                                if (!this.electricityTotals[room.property_name]) {
-                                    this.electricityTotals[room.property_name] = { total_bill_amount: 0, total_units_used: 0 };
-                                }
-                            }
-                            groups[room.property_name].push(room);
-                        }
+                        if (!groups[room.property_name]) groups[room.property_name] = [];
+                        groups[room.property_name].push(room);
                     });
                     return groups;
                 },
 
-                profitReport() {
+                propertyReport() {
                     let report = {};
-                    this.partners.forEach(p => report[p.name] = { profitShare: 0, reimbursement: 0, totalPayout: 0 });
-
-                    this.expenses.forEach(exp => {
-                        if (report[exp.partner_name]) report[exp.partner_name].reimbursement += Number(exp.amount);
-                    });
-
-                    this.rawRooms.forEach(room => {
-                        const paid = Number(room.record.amount_paid) || 0;
-                        const elecCost = this.calculateActualFee(room.property_name, room);
-                        const waterCost = Number(room.record.water_fee) || 0;
-                        const roomExpenses = this.expenses.filter(e => e.room_id === room.id).reduce((sum, e) => sum + Number(e.amount), 0);
+                    ['康樂', '平安'].forEach(pName => {
+                        const rooms = this.rawRooms.filter(r => r.property_name === pName);
+                        // 本月總收、總電、總水、總雜
+                        const income = rooms.reduce((s, r) => s + (Number(r.record.amount_paid)||0), 0);
+                        const elec = rooms.reduce((s, r) => s + this.calculateActualFee(pName, r), 0);
+                        const water = rooms.reduce((s, r) => s + (Number(r.record.water_fee)||0), 0);
+                        const exp = this.expenses.filter(e => rooms.some(r => r.id === e.room_id)).reduce((s, e) => s + Number(e.amount), 0);
                         
-                        const netProfit = paid - elecCost - waterCost - roomExpenses;
-
-                        const roomShares = this.shares.filter(s => s.room_id === room.id);
-                        roomShares.forEach(share => {
-                            if (report[share.partner_name]) {
-                                report[share.partner_name].profitShare += netProfit * (Number(share.percentage) / 100);
-                            }
+                        const netProfit = income - elec - water - exp;
+                        const partnerShares = this.partners.map(p => {
+                            const percent = this.getPropertyShare(pName, p.name);
+                            const profit = Math.round(netProfit * (percent / 100));
+                            const reimbursement = this.expenses.filter(e => e.partner_name === p.name).reduce((s, e) => s + Number(e.amount), 0);
+                            return { name: p.name, percent, profit, reimbursement };
                         });
+                        report[pName] = { netProfit, partnerShares };
                     });
-
-                    let cleanReport = {};
-                    Object.keys(report).forEach(name => {
-                        report[name].profitShare = Math.round(report[name].profitShare);
-                        report[name].totalPayout = report[name].profitShare + report[name].reimbursement;
-                        if (report[name].totalPayout !== 0 || report[name].profitShare !== 0 || report[name].reimbursement !== 0) {
-                            cleanReport[name] = report[name];
-                        }
-                    });
-                    return cleanReport;
+                    return report;
                 }
             },
             async mounted() {
@@ -337,168 +232,93 @@
                     this.currentMonth = `${y}-${String(m).padStart(2, '0')}`;
                     this.fetchData();
                 },
-                async handleAuth() {
-                    this.loading = true;
-                    try {
-                        let res = this.isRegistering ? await dbClient.auth.signUp({email:this.email, password:this.password}) 
-                                                     : await dbClient.auth.signInWithPassword({email:this.email, password:this.password});
-                        if(res.error) throw res.error;
-                        if(this.isRegistering) alert('註冊成功！預設為受限觀看權限，請聯絡管理員授權房間。');
-                        this.session = res.data.session;
-                        if(this.session){ await this.checkMyRole(); this.fetchData(); }
-                    } catch (e) { alert(e.message); } finally { this.loading = false; }
-                },
-                async handleLogout() { await dbClient.auth.signOut(); this.session = null; this.activeTab = 'rent'; },
-                
                 async checkMyRole() {
                     const { data } = await dbClient.from('user_roles').select('role').eq('id', this.session.user.id).single();
                     this.currentUserRole = data ? data.role : 'viewer';
                 },
-                async fetchUsersList() {
-                    if (!this.isAdmin) return;
-                    const { data } = await dbClient.from('user_roles').select('*').order('email');
-                    this.usersList = data || [];
-                },
-                
-                getRoomName(id) { const r = this.rawRooms.find(x => x.id === id); return r ? `${r.property_name}-${r.room_name}` : '未知房間'; },
-                getShare(roomId, partnerName) { const s = this.shares.find(x => x.room_id === roomId && x.partner_name === partnerName); return s ? s.percentage : 0; },
-                hasRoomAccess(userId, roomId) { return this.userRoomAccess.some(a => a.user_id === userId && a.room_id === roomId); },
-
-                calculateActualFee(propName, room) {
-                    const total = this.electricityTotals[propName];
-                    const unitsUsed = (room.record.curr_reading || 0) - (room.record.prev_reading || 0);
-                    if (!total || !total.total_units_used || unitsUsed <= 0) return 0;
-                    return Math.round((total.total_bill_amount / total.total_units_used) * unitsUsed);
-                },
-                getBalanceInfo(propName, room) {
-                    const payable = (Number(room.base_rent)||0) + this.calculateActualFee(propName, room) + (Number(room.record.water_fee)||0);
-                    const paid = Number(room.record.amount_paid) || 0;
-                    const diff = payable - paid;
-                    if (paid === 0 && payable === 0) return { text: '-', color: 'text-slate-300' };
-                    if (diff > 0) return { text: `需補交 $${diff}`, color: 'text-red-500' };
-                    if (diff < 0) return { text: `多付餘額 $${Math.abs(diff)}`, color: 'text-green-500' };
-                    return { text: '剛好結清', color: 'text-slate-400' };
-                },
-
                 async fetchData() {
-                    const [resRooms, resRecs, resElec, resShares, resExp, resParts, resAccess] = await Promise.all([
+                    const prevMonth = this.getRelativeMonth(-1);
+                    const [resRooms, resRecs, resElec, resParts, resPropShares, resExp, resPrevRecs] = await Promise.all([
                         dbClient.from('rooms').select('*').order('room_name'),
                         dbClient.from('monthly_records').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('property_electricity').select('*').eq('billing_month', this.currentMonth),
-                        dbClient.from('room_shares').select('*'),
+                        dbClient.from('partners').select('*'),
+                        dbClient.from('property_shares').select('*'),
                         dbClient.from('expenses').select('*').eq('billing_month', this.currentMonth),
-                        dbClient.from('partners').select('*').order('name'),
-                        dbClient.from('user_room_access').select('*')
+                        dbClient.from('monthly_records').select('*').eq('billing_month', prevMonth)
                     ]);
 
-                    // 為每個合夥人加入 editName 屬性，供介面修改使用
-                    this.partners = (resParts.data || []).map(p => ({ ...p, editName: p.name }));
-                    
-                    this.shares = resShares.data || [];
+                    this.partners = resParts.data || [];
+                    this.propShares = resPropShares.data || [];
                     this.expenses = resExp.data || [];
-                    this.userRoomAccess = resAccess.data || [];
-                    if(this.isAdmin) this.fetchUsersList();
-
                     this.electricityTotals = {};
                     (resElec.data || []).forEach(e => { this.electricityTotals[e.property_name] = e; });
 
                     this.rawRooms = (resRooms.data || []).map(room => {
                         const rec = (resRecs.data || []).find(r => r.room_id === room.id);
-                        room.record = rec || { room_id: room.id, billing_month: this.currentMonth, rent_paid: false, prev_reading: '', curr_reading: '', water_fee: '', amount_paid: '', payment_account: null };
+                        const prevRec = (resPrevRecs.data || []).find(r => r.room_id === room.id);
+                        
+                        let prevDebt = 0;
+                        if (prevRec) {
+                            // 修正：如果上個月有應收未清，就滾存
+                            // 這裡簡易計算：底租 + 水費 - 實付 (電費因為兩月一結比較複雜，通常按實際收到的差額來滾存)
+                            const payable = Number(room.base_rent) + (Number(prevRec.water_fee)||0); 
+                            const paid = Number(prevRec.amount_paid) || 0;
+                            if (payable > paid) prevDebt = payable - paid;
+                        }
+
+                        room.record = rec || { room_id: room.id, billing_month: this.currentMonth, rent_paid: false, amount_paid: '', water_fee: '', payment_account: null };
+                        room.prevDebt = prevDebt;
                         return room;
                     });
                 },
-
+                calculateActualFee(pName, room) {
+                    const total = this.electricityTotals[pName];
+                    if (!total || !total.total_units_used || !room.record.electricity_units) return 0;
+                    return Math.round((total.total_bill_amount / total.total_units_used) * room.record.electricity_units);
+                },
+                getTotalPayable(pName, room) {
+                    return (Number(room.base_rent)||0) + this.calculateActualFee(pName, room) + (Number(room.record.water_fee)||0) + (room.prevDebt||0);
+                },
+                getBalanceInfo(pName, room) {
+                    const payable = this.getTotalPayable(pName, room);
+                    const paid = Number(room.record.amount_paid) || 0;
+                    const diff = payable - paid;
+                    if (diff > 0) return { text: `尚欠 $${diff}`, color: 'text-red-500' };
+                    if (diff < 0) return { text: `多付 $${Math.abs(diff)}`, color: 'text-green-500' };
+                    return { text: '帳目已清', color: 'text-slate-400' };
+                },
+                getPropertyShare(pName, pName2) {
+                    const s = this.propShares.find(x => x.property_name === pName && x.partner_name === pName2);
+                    return s ? s.percentage : 0;
+                },
+                async updatePropertyShare(pName, pName2, val) {
+                    await dbClient.from('property_shares').upsert({ property_name: pName, partner_name: pName2, percentage: Number(val) }, { onConflict: 'property_name, partner_name' });
+                    this.fetchData();
+                },
+                async resetTenant(room) {
+                    if (!confirm('清空目前租客稱呼並重置？（不影響歷史紀錄）')) return;
+                    await dbClient.from('rooms').update({ nickname: '新租客' }).eq('id', room.id);
+                    this.fetchData();
+                },
+                async updateRoom(room) { await dbClient.from('rooms').update({ nickname: room.nickname, base_rent: Number(room.base_rent) }).eq('id', room.id); },
                 async saveRecord(room) {
-                    if (!this.isAdmin) { this.fetchData(); return; }
-                    if (!room.record.rent_paid) room.record.payment_account = null;
-                    const p = {
-                        room_id: room.id, billing_month: this.currentMonth, rent_paid: room.record.rent_paid,
-                        payment_account: room.record.payment_account, prev_reading: room.record.prev_reading||0,
-                        curr_reading: room.record.curr_reading||0, electricity_units: (room.record.curr_reading - room.record.prev_reading)||0,
-                        water_fee: room.record.water_fee||0, amount_paid: room.record.amount_paid||0
-                    };
+                    const p = { room_id: room.id, billing_month: this.currentMonth, rent_paid: room.record.rent_paid, amount_paid: room.record.amount_paid||0, water_fee: room.record.water_fee||0, payment_account: room.record.payment_account };
                     await dbClient.from('monthly_records').upsert(p, { onConflict: 'room_id, billing_month' });
                 },
-                async saveElectricityTotal(propName) {
-                    if (!this.isAdmin) return;
-                    const t = this.electricityTotals[propName];
-                    await dbClient.from('property_electricity').upsert({
-                        property_name: propName, billing_month: this.currentMonth, total_bill_amount: t.total_bill_amount||0, total_units_used: t.total_units_used||0
-                    }, { onConflict: 'property_name, billing_month' });
+                async saveElectricityTotal(pName) {
+                    const t = this.electricityTotals[pName];
+                    await dbClient.from('property_electricity').upsert({ property_name: pName, billing_month: this.currentMonth, total_bill_amount: t.total_bill_amount||0, total_units_used: t.total_units_used||0 }, { onConflict: 'property_name, billing_month' });
                 },
-                async updateRoom(room) {
-                    if(!this.isAdmin) return;
-                    await dbClient.from('rooms').update({ nickname: room.nickname, base_rent: Number(room.base_rent) || 0 }).eq('id', room.id);
+                async handleAuth() {
+                    const { data, error } = await dbClient.auth.signInWithPassword({ email: this.email, password: this.password });
+                    if (error) alert(error.message); else { this.session = data.session; await this.checkMyRole(); this.fetchData(); }
                 },
-                
-                // ★★★ 核心：修改合夥人名稱與連動更新 (Cascade) ★★★
-                async updatePartnerName(partner) {
-                    if (!this.isAdmin || !partner.editName || partner.editName === partner.name) {
-                        partner.editName = partner.name; // 還原
-                        return;
-                    }
-                    const oldName = partner.name;
-                    const newName = partner.editName;
-
-                    // 1. 更新主名單
-                    await dbClient.from('partners').update({ name: newName }).eq('id', partner.id);
-                    
-                    // 2. 同步更新所有關聯紀錄 (股份、墊支、入帳戶口)
-                    await Promise.all([
-                        dbClient.from('room_shares').update({ partner_name: newName }).eq('partner_name', oldName),
-                        dbClient.from('expenses').update({ partner_name: newName }).eq('partner_name', oldName),
-                        dbClient.from('monthly_records').update({ payment_account: newName }).eq('payment_account', oldName)
-                    ]);
-                    
-                    this.fetchData();
-                },
-
-                async addPartner() {
-                    if (!this.isAdmin || !this.newPartnerName) return;
-                    await dbClient.from('partners').insert([{ name: this.newPartnerName }]);
-                    this.newPartnerName = '';
-                    this.fetchData();
-                },
-                async updateShare(roomId, partnerName, val) {
-                    if (!this.isAdmin) return;
-                    await dbClient.from('room_shares').upsert({ room_id: roomId, partner_name: partnerName, percentage: Number(val)||0 }, { onConflict: 'room_id, partner_name' });
-                    this.fetchData();
-                },
-                async addExpense() {
-                    if (!this.isAdmin || !this.newExpense.room_id || !this.newExpense.partner_name || !this.newExpense.amount) return alert('請填寫完整');
-                    await dbClient.from('expenses').insert([{
-                        billing_month: this.currentMonth, room_id: this.newExpense.room_id,
-                        partner_name: this.newExpense.partner_name, amount: Number(this.newExpense.amount), description: this.newExpense.description
-                    }]);
-                    this.newExpense = { room_id: '', partner_name: '', amount: '', description: '' };
-                    this.fetchData();
-                },
-                async addRoom() {
-                    if (!this.isAdmin || !this.newRoom.property_name) return;
-                    await dbClient.from('rooms').insert([this.newRoom]);
-                    this.newRoom = { property_name: '', room_name: '', nickname: '', base_rent: '' };
-                    this.fetchData();
-                },
-                async updateUserRole(user) {
-                    if (!this.isAdmin) return;
-                    await dbClient.from('user_roles').update({ role: user.role }).eq('id', user.id);
-                    this.fetchData();
-                },
-                async toggleRoomAccess(userId, roomId) {
-                    if (!this.isAdmin) return;
-                    const exists = this.hasRoomAccess(userId, roomId);
-                    if (exists) {
-                        await dbClient.from('user_room_access').delete().match({ user_id: userId, room_id: roomId });
-                    } else {
-                        await dbClient.from('user_room_access').insert([{ user_id: userId, room_id: roomId }]);
-                    }
-                    this.fetchData();
-                },
-                async setAccount(room, accountName) {
-                    if (!this.isAdmin) return;
-                    room.record.payment_account = accountName;
-                    await this.saveRecord(room);
+                async handleLogout() { await dbClient.auth.signOut(); this.session = null; },
+                getRelativeMonth(o) {
+                    let [y, m] = this.currentMonth.split('-').map(Number);
+                    m += o; if(m===0){m=12;y--;} if(m===13){m=1;y++;}
+                    return `${y}-${String(m).padStart(2, '0')}`;
                 }
             }
         }).mount('#app');
