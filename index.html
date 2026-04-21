@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>簡樸房終極管理系統 V17</title>
+    <title>簡樸房終極管理系統 V18</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,7 +11,7 @@
         [v-cloak] { display: none; }
         body { background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .tab-active { background-color: #2563eb; color: white; shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
+        .tab-active { background-color: #2563eb; color: white; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
         .filter-active { background-color: #1e293b; color: white; border-color: #1e293b; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
@@ -20,11 +20,18 @@
     <div id="app" v-cloak class="max-w-md mx-auto md:max-w-5xl md:p-6">
         
         <div v-if="!session" class="p-6 mt-10 bg-white rounded-3xl shadow-xl mx-4">
-            <h2 class="text-2xl font-black text-center mb-8">系統登入</h2>
+            <h2 class="text-2xl font-black text-center mb-8">{{ isRegistering ? '註冊觀看帳號' : '系統登入' }}</h2>
             <div class="space-y-4">
-                <input v-model="email" type="email" placeholder="電郵" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                <button @click="handleAuth" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg">登入系統</button>
+                <input v-model="email" type="email" placeholder="電郵地址" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                
+                <button @click="handleAuth" :disabled="loading" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform">
+                    {{ loading ? '請稍候...' : (isRegistering ? '註冊帳號' : '登入系統') }}
+                </button>
+                
+                <button @click="isRegistering = !isRegistering" class="w-full text-slate-400 hover:text-blue-600 text-sm font-semibold transition-colors mt-2 block text-center">
+                    {{ isRegistering ? '返回登入' : '還沒帳號？按此註冊' }}
+                </button>
             </div>
         </div>
 
@@ -58,7 +65,7 @@
                     <div class="mb-4 bg-slate-800 text-white p-5 rounded-[2rem] shadow-lg">
                         <div class="flex justify-between items-center mb-3">
                             <h2 class="text-xl font-black">{{ propName }}</h2>
-                            <span class="text-[10px] bg-blue-600 px-2 py-1 rounded-md">單價: ${{ calcRate(propName) }}/度</span>
+                            <span class="text-[10px] bg-blue-600 px-2 py-1 rounded-md font-bold">單價: ${{ calcRate(propName) }}/度</span>
                         </div>
                         <div class="grid grid-cols-2 gap-4 bg-slate-700 p-3 rounded-3xl">
                             <div class="text-center">
@@ -107,7 +114,7 @@
                                     </div>
                                     <div v-if="room.elecMode === 'reading'" class="flex justify-between items-center text-center">
                                         <div class="flex-1"><p class="text-[9px] text-slate-400 font-bold mb-1">上期: {{ room.prevReading }}</p></div>
-                                        <div class="flex-1"><input v-model="room.record.meter_reading" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" class="w-full bg-white text-center font-black text-blue-600 border border-blue-200 rounded-lg outline-none text-sm p-1"></div>
+                                        <div class="flex-1"><input v-model="room.record.meter_reading" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="輸入本期" class="w-full bg-white text-center font-black text-blue-600 border border-blue-200 rounded-lg outline-none text-sm p-1"></div>
                                     </div>
                                     <div v-else class="text-center"><input v-model="room.record.manual_units" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="直接輸入度數" class="w-24 bg-white text-center font-black text-blue-600 border border-blue-200 rounded-lg outline-none text-sm p-1"></div>
                                     <div class="mt-3 flex justify-between text-[10px] font-black italic">
@@ -164,7 +171,7 @@
                         <span>{{ getRoomName(exp.room_id) }} - {{ exp.description }} <span class="bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full text-[9px]">{{ exp.partner_name }} 代墊</span></span>
                         <div class="flex items-center gap-2">
                             <span class="text-orange-600">${{ exp.amount }}</span>
-                            <button v-if="isAdmin" @click="deleteExpense(exp.id)" class="text-red-300">✕</button>
+                            <button v-if="isAdmin" @click="deleteExpense(exp.id)" class="text-red-400 font-black text-lg ml-2 hover:text-red-600">&times;</button>
                         </div>
                     </div>
                 </div>
@@ -267,7 +274,7 @@
             data() {
                 return {
                     session: null, currentUserRole: 'viewer', activeTab: 'rent',
-                    selectedProp: '全部', email: '', password: '', loading: false,
+                    selectedProp: '全部', email: '', password: '', loading: false, isRegistering: false,
                     currentMonth: new Date().toISOString().slice(0, 7),
                     rawRooms: [], electricityTotals: {}, partners: [], propShares: [], 
                     userRoomAccess: [], usersList: [], newPartnerName: '',
@@ -313,9 +320,34 @@
             async mounted() {
                 const { data } = await dbClient.auth.getSession();
                 this.session = data.session;
-                if (this.session) { await this.checkMyRole(); this.fetchData(); }
+                if (this.session) {
+                    await this.checkMyRole();
+                    this.fetchData();
+                }
             },
             methods: {
+                async handleAuth() {
+                    this.loading = true;
+                    try {
+                        let res;
+                        if (this.isRegistering) {
+                            res = await dbClient.auth.signUp({email:this.email, password:this.password});
+                            if(!res.error) alert('註冊成功！預設為受限觀看權限，請聯絡管理員授權房間。');
+                        } else {
+                            res = await dbClient.auth.signInWithPassword({email:this.email, password:this.password});
+                        }
+                        if (res.error) throw res.error;
+                        this.session = res.data.session;
+                        if (this.session) {
+                            await this.checkMyRole();
+                            this.fetchData();
+                        }
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
                 async checkMyRole() {
                     if (!this.session) return;
                     const { data } = await dbClient.from('user_roles').select('role').eq('id', this.session.user.id).single();
@@ -404,7 +436,12 @@
                     this.newExpense = { room_id: '', partner_name: '', amount: '', description: '' };
                     this.fetchData();
                 },
-                async deleteExpense(id) { if(confirm('刪除？')) { await dbClient.from('expenses').delete().eq('id', id); this.fetchData(); } },
+                async deleteExpense(id) {
+                    if(confirm('確定刪除此墊支紀錄？')) {
+                        await dbClient.from('expenses').delete().eq('id', id);
+                        this.fetchData();
+                    }
+                },
                 getRoomName(id) { const r = this.rawRooms.find(x => x.id === id); return r ? r.room_name : ''; },
                 async saveElectricityTotal(pName) {
                     const t = this.electricityTotals[pName];
@@ -417,14 +454,24 @@
                     await dbClient.from('monthly_records').upsert(p, { onConflict: 'room_id, billing_month' });
                 },
                 async togglePaid(room) { room.record.rent_paid = !room.record.rent_paid; await this.saveRecord(room); },
-                async resetTenant(room) { if (!confirm('換人？')) return; await dbClient.from('rooms').update({ nickname: '新租客', initial_meter_reading: room.record.meter_reading || 0 }).eq('id', room.id); this.fetchData(); },
+                async resetTenant(room) { if (!confirm('退租將清空名字並重置起點讀數，確定？')) return; await dbClient.from('rooms').update({ nickname: '新租客', initial_meter_reading: room.record.meter_reading || 0 }).eq('id', room.id); this.fetchData(); },
                 async addPartner() { if (!this.newPartnerName) return; await dbClient.from('partners').insert([{ name: this.newPartnerName }]); this.newPartnerName = ''; this.fetchData(); },
+                async updatePartnerName(p, event) {
+                    const newName = event.target.value;
+                    if (!newName || newName === p.name) return;
+                    await dbClient.from('partners').update({ name: newName }).eq('id', p.id);
+                    await Promise.all([
+                        dbClient.from('property_shares').update({ partner_name: newName }).eq('partner_name', p.name),
+                        dbClient.from('expenses').update({ partner_name: newName }).eq('partner_name', p.name),
+                        dbClient.from('monthly_records').update({ payment_account: newName }).eq('payment_account', p.name)
+                    ]);
+                    this.fetchData();
+                },
                 async savePropertyShare(pN, partN, val) { await dbClient.from('property_shares').upsert({ property_name: pN, partner_name: partN, percentage: Number(val) }, { onConflict: 'property_name, partner_name' }); },
                 async updateUserRole(u) { await dbClient.from('user_roles').update({ role: u.role }).eq('id', u.id); },
                 hasRoomAccess(uI, rI) { return this.userRoomAccess.some(a => a.user_id === uI && a.room_id === rI); },
                 async toggleRoomAccess(uI, rI) { const ex = this.hasRoomAccess(uI, rI); if (ex) { await dbClient.from('user_room_access').delete().match({ user_id: uI, room_id: rI }); } else { await dbClient.from('user_room_access').insert([{ user_id: uI, room_id: rI }]); } this.fetchData(); },
                 async addRoom() { if (!this.newRoom.property_name) return; await dbClient.from('rooms').insert([this.newRoom]); this.newRoom = { property_name: '', room_name: '', base_rent: '' }; this.fetchData(); },
-                async handleAuth() { const { data, error } = await dbClient.auth.signInWithPassword({ email: this.email, password: this.password }); if (error) alert(error.message); else { this.session = data.session; await this.checkMyRole(); this.fetchData(); } },
                 async handleLogout() { await dbClient.auth.signOut(); this.session = null; },
                 getRelativeMonth(o) { let [y, m] = this.currentMonth.split('-').map(Number); m += o; if(m===0){m=12;y--;} if(m===13){m=1;y++;} return `${y}-${String(m).padStart(2, '0')}`; }
             }
