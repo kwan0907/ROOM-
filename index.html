@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>簡樸房終極管理系統 V19.1 (修復白畫面)</title>
+    <title>簡樸房終極管理系統 V20 (完美修復白畫面)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -46,7 +46,7 @@
                     <span class="px-3 font-black text-slate-700 text-xs">{{ displayMonth }}</span>
                     <button @click="changeMonth(1)" class="p-2 text-slate-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg></button>
                 </div>
-                <button @click="handleLogout" class="p-2 text-slate-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+                <button @click="handleLogout" class="p-2 text-slate-400 hover:text-red-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
             </div>
 
             <div class="flex gap-2 px-4 mb-4 mt-2">
@@ -57,8 +57,8 @@
 
             <div v-if="activeTab === 'rent'">
                 <div class="flex gap-2 px-4 mb-4 overflow-x-auto no-scrollbar py-1">
-                    <button @click="selectedProp = '全部'" :class="selectedProp === '全部' ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap">全部</button>
-                    <button v-for="p in propertyNames" :key="p" @click="selectedProp = p" :class="selectedProp === p ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap">{{ p }}</button>
+                    <button @click="selectedProp = '全部'" :class="selectedProp === '全部' ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap transition-all">全部</button>
+                    <button v-for="p in propertyNames" :key="p" @click="selectedProp = p" :class="selectedProp === p ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap transition-all">{{ p }}</button>
                 </div>
 
                 <div v-for="(rooms, propName) in filteredGroupedRooms" :key="propName" class="px-4 mb-8">
@@ -229,7 +229,7 @@
                         <p class="font-black text-blue-700 mb-4">{{ pName }} % 分配</p>
                         <div v-for="p in partners" :key="p.id" class="flex justify-between items-center mb-3">
                             <span class="text-xs font-bold text-slate-600">{{ p.name }}</span>
-                            <div class="flex items-center bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-inner">
+                            <div class="flex items-center bg-white px-3 py-1.5 rounded-xl border border-slate-200">
                                 <input type="number" v-model.lazy="p.shares[pName]" @change="savePropertyShare(pName, p.name, p.shares[pName])" class="w-12 text-right bg-transparent outline-none font-black text-sm">
                                 <span class="text-[10px] text-slate-400 font-bold ml-1">%</span>
                             </div>
@@ -360,11 +360,12 @@
                 async fetchData() {
                     const prevMonth = this.getRelativeMonth(-1);
                     
-                    // ★★★ 修復核心：先抓取 rooms 並提取出 tempPropertyNames，確保後面能正確組合物件 ★★★
+                    // 1. 先抓取房間名單，確定有哪些樓宇
                     const resRooms = await dbClient.from('rooms').select('*').order('room_name');
                     const tempRooms = resRooms.data || [];
                     const tempPropertyNames = [...new Set(tempRooms.map(r => r.property_name))].sort();
 
+                    // 2. 平行抓取其他所有資料
                     const [resRecs, resElec, resParts, resPropShares, resPrevRecs, resAccess, resUsers, resExp] = await Promise.all([
                         dbClient.from('monthly_records').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('property_electricity').select('*').eq('billing_month', this.currentMonth),
@@ -381,7 +382,7 @@
                     this.usersList = resUsers.data || [];
                     this.expenses = resExp.data || [];
                     
-                    // 使用 tempPropertyNames 來建立物件結構，解決閃退空白的問題
+                    // 3. 安全組合合夥人股份 (使用剛才取得的 tempPropertyNames，確保不會出錯)
                     this.partners = (resParts.data || []).map(p => {
                         let shares = {};
                         tempPropertyNames.forEach(pn => {
@@ -391,11 +392,17 @@
                         return { ...p, shares };
                     });
 
+                    // ★★★ 4. 終極修復白畫面 Bug：強制幫所有樓宇建立電費基底 ★★★
                     const tempElec = {};
-                    (resElec.data || []).forEach(e => { tempElec[e.property_name] = e; });
+                    tempPropertyNames.forEach(pn => {
+                        tempElec[pn] = { property_name: pn, billing_month: this.currentMonth, total_bill_amount: '', total_units_used: '' };
+                    });
+                    (resElec.data || []).forEach(e => {
+                        tempElec[e.property_name] = e; // 覆蓋有真實資料的樓宇
+                    });
                     this.electricityTotals = tempElec;
 
-                    // 全部準備好後，一次性寫入 rawRooms，避免觸發半完成的畫面渲染
+                    // 5. 最後再組合 rawRooms，完成整個畫面的安全渲染
                     this.rawRooms = tempRooms.map(room => {
                         const rec = (resRecs.data || []).find(r => r.room_id === room.id);
                         const prevRec = (resPrevRecs.data || []).find(r => r.room_id === room.id);
