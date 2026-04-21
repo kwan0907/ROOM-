@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>租務管理系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6">
+        
+        <div v-if="!session" class="max-w-md mx-auto mt-20 bg-white p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-6 text-center">系統登入</h2>
+            <input v-model="email" type="email" placeholder="Email" class="w-full mb-4 p-3 border rounded">
+            <input v-model="password" type="password" placeholder="密碼" class="w-full mb-6 p-3 border rounded">
+            <button @click="handleLogin" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700">登入</button>
+        </div>
+
+        <div v-else>
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold">簡樸房租務管理</h1>
+                <div class="flex items-center gap-4">
+                    <input type="month" v-model="currentMonth" @change="fetchData" class="p-2 border rounded">
+                    <button @click="handleLogout" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">登出</button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h3 class="text-lg font-semibold mb-4">新增房間</h3>
+                <div class="flex flex-wrap gap-4 items-end">
+                    <div>
+                        <label class="block text-sm text-gray-600">物業名稱</label>
+                        <input v-model="newRoom.property_name" type="text" placeholder="例如：康樂" class="p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">房間編號</label>
+                        <input v-model="newRoom.room_name" type="text" placeholder="例如：E室" class="p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">基本租金 ($)</label>
+                        <input v-model="newRoom.base_rent" type="number" class="p-2 border rounded">
+                    </div>
+                    <button @click="addRoom" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">新增</button>
+                </div>
+            </div>
+
+            <div v-for="(rooms, propName) in groupedRooms" :key="propName" class="mb-10">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-blue-800">{{ propName }}</h2>
+                    
+                    <div class="bg-blue-50 p-3 rounded border border-blue-200 flex gap-4 items-center">
+                        <span class="font-semibold text-sm">當月大電單設定：</span>
+                        <div>
+                            <label class="text-xs text-gray-500">總電費 $</label>
+                            <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" type="number" class="w-20 p-1 text-sm border rounded">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">總度數</label>
+                            <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" type="number" class="w-20 p-1 text-sm border rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto bg-white rounded-lg shadow">
+                    <table class="min-w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="p-4">房間</th>
+                                <th class="p-4">租戶姓名</th>
+                                <th class="p-4">底租</th>
+                                <th class="p-4">本月用電度數</th>
+                                <th class="p-4">分攤電費</th>
+                                <th class="p-4">本月總收</th>
+                                <th class="p-4">交租狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="room in rooms" :key="room.id" class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-semibold">{{ room.room_name }}</td>
+                                <td class="p-4">
+                                    <input v-model="room.tenant_name" @blur="updateTenant(room)" placeholder="未命名" class="border-b border-dashed border-gray-400 bg-transparent focus:outline-none focus:border-blue-500">
+                                </td>
+                                <td class="p-4">${{ room.base_rent }}</td>
+                                <td class="p-4">
+                                    <input v-model="room.record.electricity_units" @blur="saveRecord(room)" type="number" class="w-20 p-1 border rounded">
+                                </td>
+                                <td class="p-4 text-orange-600 font-semibold">
+                                    ${{ calculateElectricityFee(propName, room.record.electricity_units) }}
+                                </td>
+                                <td class="p-4 font-bold text-lg">
+                                    ${{ Number(room.base_rent) + Number(calculateElectricityFee(propName, room.record.electricity_units)) }}
+                                </td>
+                                <td class="p-4 flex items-center gap-3">
+                                    <input type="checkbox" v-model="room.record.rent_paid" @change="saveRecord(room)" class="w-5 h-5 cursor-pointer">
+                                    <span v-if="room.record.rent_paid" class="text-green-600 font-bold">已交</span>
+                                    <span v-else-if="isOverdue(room.record.rent_paid)" class="text-red-600 font-bold animate-pulse">⚠️ 逾期未交</span>
+                                    <span v-else class="text-gray-400">未交</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://duneupvlgjxbqkuosaqp.supabase.co';
+        const supabaseKey = 'sb_publishable_FgzUFLNiaF2cOrheTzYsAA_3oU2LBaG';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        const app = Vue.createApp({
+            data() {
+                return {
+                    session: null,
+                    email: '',
+                    password: '',
+                    currentMonth: new Date().toISOString().slice(0, 7), // 預設當前月份 YYYY-MM
+                    rawRooms: [],
+                    electricityTotals: {},
+                    newRoom: { property_name: '', room_name: '', base_rent: 0 }
+                }
+            },
+            computed: {
+                groupedRooms() {
+                    const groups = {};
+                    this.rawRooms.forEach(room => {
+                        if (!groups[room.property_name]) {
+                            groups[room.property_name] = [];
+                            if (!this.electricityTotals[room.property_name]) {
+                                this.electricityTotals[room.property_name] = { total_bill_amount: 0, total_units_used: 0 };
+                            }
+                        }
+                        groups[room.property_name].push(room);
+                    });
+                    return groups;
+                }
+            },
+            async mounted() {
+                const { data } = await supabase.auth.getSession();
+                this.session = data.session;
+                if (this.session) this.fetchData();
+            },
+            methods: {
+                async handleLogin() {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: this.email,
+                        password: this.password,
+                    });
+                    if (error) alert('登入失敗: ' + error.message);
+                    else {
+                        this.session = data.session;
+                        this.fetchData();
+                    }
+                },
+                async handleLogout() {
+                    await supabase.auth.signOut();
+                    this.session = null;
+                },
+                isOverdue(isPaid) {
+                    const today = new Date();
+                    const [year, month] = this.currentMonth.split('-');
+                    // 如果檢視的是當前月份，且超過7號，且未交租
+                    if (today.getFullYear() == year && (today.getMonth() + 1) == month) {
+                        return today.getDate() > 7 && !isPaid;
+                    }
+                    return false;
+                },
+                calculateElectricityFee(propName, roomUnits) {
+                    const total = this.electricityTotals[propName];
+                    if (!total || total.total_units_used == 0 || !roomUnits) return 0;
+                    const fee = (total.total_bill_amount / total.total_units_used) * roomUnits;
+                    return Math.round(fee); // 四捨五入到整數
+                },
+                async fetchData() {
+                    // 獲取房間列表
+                    const { data: rooms } = await supabase.from('rooms').select('*').order('room_name');
+                    
+                    // 獲取當月月結紀錄
+                    const { data: records } = await supabase.from('monthly_records')
+                        .select('*').eq('billing_month', this.currentMonth);
+                        
+                    // 獲取當月大電單紀錄
+                    const { data: elecData } = await supabase.from('property_electricity')
+                        .select('*').eq('billing_month', this.currentMonth);
+
+                    // 綁定大電單資料
+                    this.electricityTotals = {};
+                    elecData?.forEach(e => {
+                        this.electricityTotals[e.property_name] = e;
+                    });
+
+                    // 整合資料結構
+                    this.rawRooms = rooms.map(room => {
+                        const existingRecord = records?.find(r => r.room_id === room.id);
+                        room.record = existingRecord || { 
+                            room_id: room.id, 
+                            billing_month: this.currentMonth, 
+                            rent_paid: false, 
+                            electricity_units: 0 
+                        };
+                        return room;
+                    });
+                },
+                async updateTenant(room) {
+                    await supabase.from('rooms').update({ tenant_name: room.tenant_name }).eq('id', room.id);
+                },
+                async saveRecord(room) {
+                    const payload = {
+                        room_id: room.id,
+                        billing_month: this.currentMonth,
+                        rent_paid: room.record.rent_paid,
+                        electricity_units: room.record.electricity_units || 0,
+                        payment_date: room.record.rent_paid ? new Date().toISOString() : null
+                    };
+
+                    const { error } = await supabase.from('monthly_records').upsert(payload, { onConflict: 'room_id, billing_month' });
+                    if(error) console.error(error);
+                },
+                async saveElectricityTotal(propName) {
+                    const totalData = this.electricityTotals[propName];
+                    const payload = {
+                        property_name: propName,
+                        billing_month: this.currentMonth,
+                        total_bill_amount: totalData.total_bill_amount || 0,
+                        total_units_used: totalData.total_units_used || 0
+                    };
+                    await supabase.from('property_electricity').upsert(payload, { onConflict: 'property_name, billing_month' });
+                },
+                async addRoom() {
+                    if (!this.newRoom.property_name || !this.newRoom.room_name || !this.newRoom.base_rent) {
+                        alert("請填寫完整房間資訊");
+                        return;
+                    }
+                    await supabase.from('rooms').insert([this.newRoom]);
+                    this.newRoom = { property_name: '', room_name: '', base_rent: 0 };
+                    this.fetchData(); // 重新拉取資料
+                }
+            }
+        });
+        app.mount('#app');
+    </script>
+</body>
+</html>
