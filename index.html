@@ -8,13 +8,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 隱藏尚未載入完成的 Vue 元素 */
         [v-cloak] { display: none; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
     <div id="loading-error" class="text-center p-10 text-red-500 font-bold">
-        正在載入系統... 如果這段文字一直出現，代表程式碼有語法錯誤，請按 F12 查看 Console。
+        正在載入系統... 如果這段文字一直出現，請按 Ctrl + F5 強制重新整理。
     </div>
 
     <div id="app" v-cloak class="max-w-6xl mx-auto p-4">
@@ -116,14 +115,15 @@
     </div>
 
     <script>
-        // 確認 Vue 載入成功後，隱藏錯誤提示
+        // 隱藏錯誤提示
         document.getElementById('loading-error').style.display = 'none';
 
-        // 你的專屬 Supabase 連線資料
+        // 專案金鑰
         const supabaseUrl = 'https://duneupvlgjxbqkuosaqp.supabase.co'; 
         const supabaseKey = 'sb_publishable_FgzUFLNiaF2cOrheTzYsAA_3oU2LBaG';
         
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        // 【終極解決方案】改名為 dbClient，徹底避開命名衝突！
+        const dbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         const app = Vue.createApp({
             data() {
@@ -156,7 +156,7 @@
                 }
             },
             async mounted() {
-                const { data } = await supabase.auth.getSession();
+                const { data } = await dbClient.auth.getSession();
                 this.session = data.session;
                 if (this.session) this.fetchData();
             },
@@ -167,10 +167,10 @@
                     try {
                         let result;
                         if (this.isRegistering) {
-                            result = await supabase.auth.signUp({ email: this.email, password: this.password });
+                            result = await dbClient.auth.signUp({ email: this.email, password: this.password });
                             if (!result.error) alert('註冊成功！請直接嘗試登入。');
                         } else {
-                            result = await supabase.auth.signInWithPassword({ email: this.email, password: this.password });
+                            result = await dbClient.auth.signInWithPassword({ email: this.email, password: this.password });
                         }
                         
                         if (result.error) throw result.error;
@@ -183,7 +183,7 @@
                     }
                 },
                 async handleLogout() {
-                    await supabase.auth.signOut();
+                    await dbClient.auth.signOut();
                     this.session = null;
                 },
                 calculateActualFee(propName, units) {
@@ -204,9 +204,9 @@
                     return { text: '清', color: 'text-gray-400' };
                 },
                 async fetchData() {
-                    const { data: rooms } = await supabase.from('rooms').select('*').order('room_name');
-                    const { data: records } = await supabase.from('monthly_records').select('*').eq('billing_month', this.currentMonth);
-                    const { data: elecData } = await supabase.from('property_electricity').select('*').eq('billing_month', this.currentMonth);
+                    const { data: rooms } = await dbClient.from('rooms').select('*').order('room_name');
+                    const { data: records } = await dbClient.from('monthly_records').select('*').eq('billing_month', this.currentMonth);
+                    const { data: elecData } = await dbClient.from('property_electricity').select('*').eq('billing_month', this.currentMonth);
 
                     this.electricityTotals = {};
                     elecData?.forEach(e => { this.electricityTotals[e.property_name] = e; });
@@ -218,7 +218,7 @@
                     });
                 },
                 async updateTenant(room) {
-                    await supabase.from('rooms').update({ tenant_name: room.tenant_name }).eq('id', room.id);
+                    await dbClient.from('rooms').update({ tenant_name: room.tenant_name }).eq('id', room.id);
                 },
                 async saveRecord(room) {
                     const payload = {
@@ -228,11 +228,11 @@
                         electricity_units: room.record.electricity_units || 0,
                         prepaid_electricity: room.record.prepaid_electricity || 0
                     };
-                    await supabase.from('monthly_records').upsert(payload, { onConflict: 'room_id, billing_month' });
+                    await dbClient.from('monthly_records').upsert(payload, { onConflict: 'room_id, billing_month' });
                 },
                 async saveElectricityTotal(propName) {
                     const t = this.electricityTotals[propName];
-                    await supabase.from('property_electricity').upsert({
+                    await dbClient.from('property_electricity').upsert({
                         property_name: propName, billing_month: this.currentMonth,
                         total_bill_amount: t.total_bill_amount || 0,
                         total_units_used: t.total_units_used || 0
@@ -240,7 +240,7 @@
                 },
                 async addRoom() {
                     if (!this.newRoom.property_name || !this.newRoom.room_name) return;
-                    await supabase.from('rooms').insert([this.newRoom]);
+                    await dbClient.from('rooms').insert([this.newRoom]);
                     this.newRoom = { property_name: '', room_name: '', base_rent: '' };
                     this.fetchData();
                 }
