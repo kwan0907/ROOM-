@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>簡樸房管理系統 V8 (合夥分紅版)</title>
+    <title>簡樸房管理系統 V9 (合夥人隔離版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -17,7 +17,7 @@
     <div id="app" v-cloak class="max-w-md mx-auto md:max-w-5xl md:p-6">
         
         <div v-if="!session" class="p-6 mt-10 bg-white rounded-3xl shadow-xl mx-4">
-            <h2 class="text-2xl font-black text-center mb-8 text-slate-800">{{ isRegistering ? '註冊合夥人帳號' : '系統登入' }}</h2>
+            <h2 class="text-2xl font-black text-center mb-8 text-slate-800">{{ isRegistering ? '註冊觀看帳號' : '系統登入' }}</h2>
             <div class="space-y-4">
                 <input v-model="email" type="email" placeholder="電郵地址" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
                 <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
@@ -25,7 +25,7 @@
                     {{ loading ? '請稍候...' : (isRegistering ? '註冊帳號' : '登入系統') }}
                 </button>
                 <button @click="isRegistering = !isRegistering" class="w-full text-slate-400 hover:text-blue-600 text-sm font-semibold transition-colors">
-                    {{ isRegistering ? '返回登入' : '合夥人按此註冊' }}
+                    {{ isRegistering ? '返回登入' : '還沒帳號？按此註冊' }}
                 </button>
             </div>
         </div>
@@ -35,7 +35,7 @@
                 <div class="flex items-center gap-2 w-full md:w-auto justify-between">
                     <h1 class="text-xl font-black text-slate-800">簡樸房管理</h1>
                     <span v-if="isAdmin" class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-md">管理員</span>
-                    <span v-else class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md">合夥人</span>
+                    <span v-else class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md">合夥觀看者</span>
                 </div>
 
                 <div class="flex items-center bg-white p-1 rounded-2xl shadow-sm border border-slate-200 w-full md:w-auto justify-between flex-1 md:max-w-xs">
@@ -57,6 +57,10 @@
             </div>
 
             <div v-if="activeTab === 'rent'">
+                <div v-if="Object.keys(visibleGroupedRooms).length === 0" class="text-center p-10 text-slate-400 font-bold">
+                    目前沒有可顯示的房間。請聯絡管理員開通觀看權限。
+                </div>
+
                 <div v-for="(rooms, propName) in visibleGroupedRooms" :key="propName" class="px-4 mb-8">
                     <div class="mb-4 bg-slate-800 text-white p-4 rounded-3xl shadow-lg">
                         <h2 class="text-2xl font-black mb-3">{{ propName }}</h2>
@@ -83,9 +87,7 @@
                                 <div class="flex justify-between"><span class="text-slate-500">底租</span><span>${{ room.base_rent }}</span></div>
                                 <div class="flex justify-between text-blue-600"><span>電費 (上:{{room.record.prev_reading||0}} 本:{{room.record.curr_reading||0}})</span><span>${{ calculateActualFee(propName, room) }}</span></div>
                                 <div class="flex justify-between text-cyan-600"><span>水費</span><span>${{ room.record.water_fee || 0 }}</span></div>
-                                
                                 <hr class="border-slate-200 border-dashed my-2">
-                                
                                 <div class="flex justify-between text-blue-900">
                                     <span>租客已實付總額</span>
                                     <div class="flex items-center border-b border-blue-300">
@@ -111,44 +113,42 @@
             </div>
 
             <div v-if="activeTab === 'profit'" class="px-4 mb-8">
-                
-                <div class="bg-white p-5 rounded-3xl shadow-sm mb-6 border border-orange-100">
+                <div v-if="isAdmin" class="bg-white p-5 rounded-3xl shadow-sm mb-6 border border-orange-100">
                     <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">🛠️ 新增雜費墊支</h3>
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <select v-model="newExpense.room_id" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
                             <option value="">選擇房間</option>
                             <option v-for="r in rawRooms" :key="r.id" :value="r.id">{{ r.property_name }} - {{ r.room_name }}</option>
                         </select>
-                        <select v-model="newExpense.payer_id" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
+                        <select v-model="newExpense.partner_name" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
                             <option value="">由誰墊支？</option>
-                            <option v-for="u in usersList" :key="u.id" :value="u.id">{{ getEmailPrefix(u.email) }}</option>
+                            <option v-for="p in partners" :key="p.id" :value="p.name">{{ p.name }}</option>
                         </select>
                         <input v-model="newExpense.amount" type="number" placeholder="墊支金額 ($)" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
                         <input v-model="newExpense.description" placeholder="用途 (如: 換鎖)" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
                     </div>
                     <button @click="addExpense" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 shadow-md">新增墊支紀錄</button>
+                </div>
 
-                    <div v-if="expenses.length > 0" class="mt-4 bg-orange-50 p-3 rounded-xl">
-                        <p class="text-xs font-bold text-orange-800 mb-2">本月墊支清單：</p>
-                        <div v-for="exp in expenses" :key="exp.id" class="flex justify-between text-xs font-bold text-slate-600 mb-1 border-b border-orange-100 pb-1">
-                            <span>{{ getRoomName(exp.room_id) }} - {{ exp.description }} ({{ getUserName(exp.payer_id) }})</span>
-                            <span class="text-orange-600">${{ exp.amount }}</span>
-                        </div>
+                <div v-if="expenses.length > 0" class="mb-6 bg-orange-50 p-4 rounded-2xl border border-orange-100">
+                    <p class="text-sm font-black text-orange-800 mb-2">本月墊支清單</p>
+                    <div v-for="exp in expenses" :key="exp.id" class="flex justify-between items-center text-sm font-bold text-slate-700 mb-2 border-b border-orange-200 pb-2">
+                        <span>{{ getRoomName(exp.room_id) }} - {{ exp.description }} <span class="bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full text-[10px]">{{ exp.partner_name }} 代墊</span></span>
+                        <span class="text-orange-600 font-black">${{ exp.amount }}</span>
                     </div>
                 </div>
 
                 <div class="bg-slate-800 p-5 rounded-3xl shadow-lg">
-                    <h3 class="text-xl font-black text-white mb-4">💰 本月分紅與退款總表</h3>
-                    <p class="text-xs text-slate-400 mb-4">系統已自動扣除電費、水費、雜費及租客欠款，並按房間股份精算。</p>
-                    
+                    <h3 class="text-xl font-black text-white mb-4">💰 本月利潤分紅</h3>
+                    <p class="text-xs text-slate-400 mb-4">按房間股權獨立結算。已自動扣除電水及雜費，並加回代墊款項。</p>
                     <div class="space-y-3">
-                        <div v-for="(data, userId) in profitReport" :key="userId" class="bg-slate-700 p-4 rounded-2xl">
+                        <div v-for="(data, pName) in profitReport" :key="pName" class="bg-slate-700 p-4 rounded-2xl">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="font-black text-white text-lg">{{ getUserName(userId) }}</span>
-                                <span class="text-2xl font-black text-green-400">${{ data.totalPayout }}</span>
+                                <span class="font-black text-white text-lg">{{ pName }}</span>
+                                <span class="text-2xl font-black" :class="data.totalPayout >= 0 ? 'text-green-400' : 'text-red-400'">${{ data.totalPayout }}</span>
                             </div>
                             <div class="flex justify-between text-xs font-bold text-slate-300 bg-slate-800 p-2 rounded-xl">
-                                <span>純利潤分紅: ${{ data.profitShare }}</span>
+                                <span>純利分紅: ${{ data.profitShare }}</span>
                                 <span class="text-orange-400">墊支退款: +${{ data.reimbursement }}</span>
                             </div>
                         </div>
@@ -157,14 +157,28 @@
             </div>
 
             <div v-if="activeTab === 'settings' && isAdmin" class="px-4 mb-8 space-y-6">
+                
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 class="text-lg font-black text-slate-800 mb-4">👤 合夥人名單建檔</h3>
+                    <div class="flex gap-2 mb-4">
+                        <input v-model="newPartnerName" placeholder="輸入合夥人姓名" class="flex-1 p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
+                        <button @click="addPartner" class="bg-blue-600 text-white font-bold px-4 rounded-xl shadow-md">新增</button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <span v-for="p in partners" :key="p.id" class="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-full text-sm">
+                            {{ p.name }}
+                        </span>
+                    </div>
+                </div>
+
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <h3 class="text-lg font-black text-slate-800 mb-4">📊 房間股份設定</h3>
                     <div v-for="room in rawRooms" :key="room.id" class="mb-4 bg-slate-50 p-4 rounded-2xl">
                         <h4 class="font-bold text-blue-800 mb-3">{{ room.property_name }} - {{ room.room_name }}</h4>
-                        <div v-for="user in usersList" :key="user.id" class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-bold text-slate-600">{{ getEmailPrefix(user.email) }}</span>
+                        <div v-for="p in partners" :key="p.id" class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-slate-600">{{ p.name }}</span>
                             <div class="flex items-center">
-                                <input type="number" :value="getShare(room.id, user.id)" @change="e => updateShare(room.id, user.id, e.target.value)" class="w-16 p-1 text-right border rounded bg-white font-bold text-sm">
+                                <input type="number" :value="getShare(room.id, p.name)" @change="e => updateShare(room.id, p.name, e.target.value)" class="w-16 p-1 text-right border rounded bg-white font-bold text-sm outline-none focus:border-blue-500">
                                 <span class="ml-1 text-sm font-bold text-slate-400">%</span>
                             </div>
                         </div>
@@ -172,13 +186,38 @@
                 </div>
                 
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-4">🏠 新增房間</h3>
+                    <h3 class="text-lg font-black text-slate-800 mb-4">🔐 登入帳號權限與授權房間</h3>
+                    <p class="text-xs text-slate-400 mb-4">決定誰能登入系統，以及「觀看者」能看見哪些房間。</p>
+                    
+                    <div v-for="user in usersList" :key="user.id" class="mb-4 p-3 border border-slate-200 rounded-xl">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-sm font-bold text-slate-800">{{ user.email }}</span>
+                            <select v-model="user.role" @change="updateUserRole(user)" class="bg-slate-100 border-none text-xs font-bold p-1.5 rounded-lg outline-none" :disabled="user.id === session.user.id">
+                                <option value="admin">管理員 (看全部)</option>
+                                <option value="viewer">觀看者 (受限)</option>
+                            </select>
+                        </div>
+                        
+                        <div v-if="user.role === 'viewer'" class="bg-slate-50 p-2 rounded-lg">
+                            <p class="text-[10px] font-bold text-slate-400 mb-2">授權可視房間 (打勾代表可看)：</p>
+                            <div class="flex flex-wrap gap-2">
+                                <label v-for="room in rawRooms" :key="room.id" class="flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
+                                    <input type="checkbox" :checked="hasRoomAccess(user.id, room.id)" @change="toggleRoomAccess(user.id, room.id)" class="text-blue-500 rounded focus:ring-0">
+                                    <span class="text-[10px] font-bold text-slate-600">{{ room.property_name }}-{{ room.room_name }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 class="text-lg font-black text-slate-800 mb-4">🏠 新增房源</h3>
                     <div class="grid grid-cols-2 gap-3 mb-3">
-                        <input v-model="newRoom.property_name" placeholder="物業名稱" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                        <input v-model="newRoom.room_name" placeholder="房間編號" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
+                        <input v-model="newRoom.property_name" placeholder="物業" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
+                        <input v-model="newRoom.room_name" placeholder="房號" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
                         <input v-model="newRoom.base_rent" type="number" placeholder="底租" class="col-span-2 p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
                     </div>
-                    <button @click="addRoom" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md">確定新增</button>
+                    <button @click="addRoom" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-md">建立房間</button>
                 </div>
             </div>
 
@@ -186,8 +225,6 @@
     </div>
 
     <script>
-        document.getElementById('loading-error')?.remove();
-
         const supabaseUrl = 'https://duneupvlgjxbqkuosaqp.supabase.co'; 
         const supabaseKey = 'sb_publishable_FgzUFLNiaF2cOrheTzYsAA_3oU2LBaG';
         const dbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -199,27 +236,26 @@
                     activeTab: 'rent', email: '', password: '', isRegistering: false, loading: false,
                     currentMonth: new Date().toISOString().slice(0, 7),
                     rawRooms: [], electricityTotals: {}, shares: [], expenses: [],
+                    partners: [], userRoomAccess: [], newPartnerName: '',
                     newRoom: { property_name: '', room_name: '', nickname: '', base_rent: '' },
-                    newExpense: { room_id: '', payer_id: '', amount: '', description: '' }
+                    newExpense: { room_id: '', partner_name: '', amount: '', description: '' }
                 }
             },
             computed: {
                 isAdmin() { return this.currentUserRole === 'admin'; },
                 displayMonth() { return this.currentMonth ? `${this.currentMonth.split('-')[0]}年 ${this.currentMonth.split('-')[1]}月` : ''; },
                 
-                // 權限過濾：管理員看全部，合夥人只看自己有股份的房間
+                // 觀看權限過濾器：管理員看全部，Viewer看 user_room_access 有打勾的
                 visibleGroupedRooms() {
                     const groups = {};
                     this.rawRooms.forEach(room => {
-                        let hasShare = false;
-                        if (this.isAdmin) {
-                            hasShare = true;
-                        } else if (this.session) {
-                            const myShare = this.shares.find(s => s.room_id === room.id && s.user_id === this.session.user.id);
-                            if (myShare && Number(myShare.percentage) > 0) hasShare = true;
+                        let canView = false;
+                        if (this.isAdmin) canView = true;
+                        else if (this.session) {
+                            canView = this.userRoomAccess.some(a => a.user_id === this.session.user.id && a.room_id === room.id);
                         }
 
-                        if (hasShare) {
+                        if (canView) {
                             if (!groups[room.property_name]) {
                                 groups[room.property_name] = [];
                                 if (!this.electricityTotals[room.property_name]) {
@@ -232,56 +268,39 @@
                     return groups;
                 },
 
-                // 核心分紅引擎
+                // 分紅核心 (以 Partners 名單為主)
                 profitReport() {
                     let report = {};
-                    // 初始化所有合夥人
-                    this.usersList.forEach(u => {
-                        report[u.id] = { profitShare: 0, reimbursement: 0, totalPayout: 0 };
-                    });
+                    this.partners.forEach(p => report[p.name] = { profitShare: 0, reimbursement: 0, totalPayout: 0 });
 
-                    // 1. 計算代墊退款
                     this.expenses.forEach(exp => {
-                        if (report[exp.payer_id]) {
-                            report[exp.payer_id].reimbursement += Number(exp.amount);
-                        }
+                        if (report[exp.partner_name]) report[exp.partner_name].reimbursement += Number(exp.amount);
                     });
 
-                    // 2. 計算每個房間的淨利潤並按股份分配
                     this.rawRooms.forEach(room => {
                         const paid = Number(room.record.amount_paid) || 0;
                         const elecCost = this.calculateActualFee(room.property_name, room);
                         const waterCost = Number(room.record.water_fee) || 0;
-                        
-                        // 找出這個房間本月的所有雜費總額
                         const roomExpenses = this.expenses.filter(e => e.room_id === room.id).reduce((sum, e) => sum + Number(e.amount), 0);
                         
-                        // 房間淨利 = 實收 - 實支電 - 實支水 - 雜費 (若淨利為負，代表虧損)
                         const netProfit = paid - elecCost - waterCost - roomExpenses;
 
-                        // 分配給有股份的合夥人
                         const roomShares = this.shares.filter(s => s.room_id === room.id);
                         roomShares.forEach(share => {
-                            if (report[share.user_id]) {
-                                const cut = netProfit * (Number(share.percentage) / 100);
-                                report[share.user_id].profitShare += cut;
+                            if (report[share.partner_name]) {
+                                report[share.partner_name].profitShare += netProfit * (Number(share.percentage) / 100);
                             }
                         });
                     });
 
-                    // 3. 加總
-                    Object.keys(report).forEach(uid => {
-                        report[uid].profitShare = Math.round(report[uid].profitShare);
-                        report[uid].totalPayout = report[uid].profitShare + report[uid].reimbursement;
-                    });
-
-                    // 過濾掉金額全為 0 且沒權限的人，讓畫面乾淨
                     let cleanReport = {};
-                    for (let uid in report) {
-                        if (report[uid].totalPayout !== 0 || report[uid].profitShare !== 0 || report[uid].reimbursement !== 0) {
-                            cleanReport[uid] = report[uid];
+                    Object.keys(report).forEach(name => {
+                        report[name].profitShare = Math.round(report[name].profitShare);
+                        report[name].totalPayout = report[name].profitShare + report[name].reimbursement;
+                        if (report[name].totalPayout !== 0 || report[name].profitShare !== 0 || report[name].reimbursement !== 0) {
+                            cleanReport[name] = report[name];
                         }
-                    }
+                    });
                     return cleanReport;
                 }
             },
@@ -289,7 +308,6 @@
                 const { data } = await dbClient.auth.getSession();
                 this.session = data.session;
                 if (this.session) {
-                    await this.fetchUsersList(); // 先拿名單才能判斷身分
                     await this.checkMyRole();
                     this.fetchData();
                 }
@@ -307,27 +325,26 @@
                         let res = this.isRegistering ? await dbClient.auth.signUp({email:this.email, password:this.password}) 
                                                      : await dbClient.auth.signInWithPassword({email:this.email, password:this.password});
                         if(res.error) throw res.error;
-                        if(this.isRegistering) alert('註冊成功！預設為合夥人權限。');
+                        if(this.isRegistering) alert('註冊成功！預設為受限觀看權限，請聯絡管理員授權房間。');
                         this.session = res.data.session;
-                        if(this.session){ await this.fetchUsersList(); await this.checkMyRole(); this.fetchData(); }
+                        if(this.session){ await this.checkMyRole(); this.fetchData(); }
                     } catch (e) { alert(e.message); } finally { this.loading = false; }
                 },
-                async handleLogout() { await dbClient.auth.signOut(); this.session = null; },
+                async handleLogout() { await dbClient.auth.signOut(); this.session = null; this.activeTab = 'rent'; },
                 
                 async checkMyRole() {
                     const { data } = await dbClient.from('user_roles').select('role').eq('id', this.session.user.id).single();
                     this.currentUserRole = data ? data.role : 'viewer';
                 },
                 async fetchUsersList() {
+                    if (!this.isAdmin) return;
                     const { data } = await dbClient.from('user_roles').select('*').order('email');
                     this.usersList = data || [];
                 },
                 
-                // 輔助UI顯示
-                getEmailPrefix(email) { return email ? email.split('@')[0] : '未知'; },
-                getUserName(id) { const u = this.usersList.find(x => x.id === id); return u ? this.getEmailPrefix(u.email) : '已刪除用戶'; },
                 getRoomName(id) { const r = this.rawRooms.find(x => x.id === id); return r ? `${r.property_name}-${r.room_name}` : '未知房間'; },
-                getShare(roomId, userId) { const s = this.shares.find(x => x.room_id === roomId && x.user_id === userId); return s ? s.percentage : 0; },
+                getShare(roomId, partnerName) { const s = this.shares.find(x => x.room_id === roomId && x.partner_name === partnerName); return s ? s.percentage : 0; },
+                hasRoomAccess(userId, roomId) { return this.userRoomAccess.some(a => a.user_id === userId && a.room_id === roomId); },
 
                 calculateActualFee(propName, room) {
                     const total = this.electricityTotals[propName];
@@ -346,16 +363,22 @@
                 },
 
                 async fetchData() {
-                    const [resRooms, resRecs, resElec, resShares, resExp] = await Promise.all([
+                    const [resRooms, resRecs, resElec, resShares, resExp, resParts, resAccess] = await Promise.all([
                         dbClient.from('rooms').select('*').order('room_name'),
                         dbClient.from('monthly_records').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('property_electricity').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('room_shares').select('*'),
-                        dbClient.from('expenses').select('*').eq('billing_month', this.currentMonth)
+                        dbClient.from('expenses').select('*').eq('billing_month', this.currentMonth),
+                        dbClient.from('partners').select('*'),
+                        dbClient.from('user_room_access').select('*')
                     ]);
 
+                    this.partners = resParts.data || [];
                     this.shares = resShares.data || [];
                     this.expenses = resExp.data || [];
+                    this.userRoomAccess = resAccess.data || [];
+                    if(this.isAdmin) this.fetchUsersList();
+
                     this.electricityTotals = {};
                     (resElec.data || []).forEach(e => { this.electricityTotals[e.property_name] = e; });
 
@@ -367,7 +390,7 @@
                 },
 
                 async saveRecord(room) {
-                    if (!this.isAdmin) return;
+                    if (!this.isAdmin) { this.fetchData(); return; }
                     const p = {
                         room_id: room.id, billing_month: this.currentMonth, rent_paid: room.record.rent_paid,
                         prev_reading: room.record.prev_reading||0, curr_reading: room.record.curr_reading||0,
@@ -386,24 +409,47 @@
                 async updateRoomDetails(room) {
                     if(this.isAdmin) await dbClient.from('rooms').update({ nickname: room.nickname }).eq('id', room.id);
                 },
+                
+                // 設定頁功能
+                async addPartner() {
+                    if (!this.isAdmin || !this.newPartnerName) return;
+                    await dbClient.from('partners').insert([{ name: this.newPartnerName }]);
+                    this.newPartnerName = '';
+                    this.fetchData();
+                },
+                async updateShare(roomId, partnerName, val) {
+                    if (!this.isAdmin) return;
+                    await dbClient.from('room_shares').upsert({ room_id: roomId, partner_name: partnerName, percentage: Number(val)||0 }, { onConflict: 'room_id, partner_name' });
+                    this.fetchData();
+                },
+                async addExpense() {
+                    if (!this.isAdmin || !this.newExpense.room_id || !this.newExpense.partner_name || !this.newExpense.amount) return alert('請填寫完整');
+                    await dbClient.from('expenses').insert([{
+                        billing_month: this.currentMonth, room_id: this.newExpense.room_id,
+                        partner_name: this.newExpense.partner_name, amount: Number(this.newExpense.amount), description: this.newExpense.description
+                    }]);
+                    this.newExpense = { room_id: '', partner_name: '', amount: '', description: '' };
+                    this.fetchData();
+                },
                 async addRoom() {
                     if (!this.isAdmin || !this.newRoom.property_name) return;
                     await dbClient.from('rooms').insert([this.newRoom]);
                     this.newRoom = { property_name: '', room_name: '', nickname: '', base_rent: '' };
                     this.fetchData();
                 },
-                async updateShare(roomId, userId, val) {
+                async updateUserRole(user) {
                     if (!this.isAdmin) return;
-                    await dbClient.from('room_shares').upsert({ room_id: roomId, user_id: userId, percentage: Number(val)||0 }, { onConflict: 'room_id, user_id' });
-                    this.fetchData(); // 重新計算
+                    await dbClient.from('user_roles').update({ role: user.role }).eq('id', user.id);
+                    this.fetchData();
                 },
-                async addExpense() {
-                    if (!this.isAdmin || !this.newExpense.room_id || !this.newExpense.payer_id || !this.newExpense.amount) return alert('請填寫完整墊支資訊');
-                    await dbClient.from('expenses').insert([{
-                        billing_month: this.currentMonth, room_id: this.newExpense.room_id,
-                        payer_id: this.newExpense.payer_id, amount: Number(this.newExpense.amount), description: this.newExpense.description
-                    }]);
-                    this.newExpense = { room_id: '', payer_id: '', amount: '', description: '' };
+                async toggleRoomAccess(userId, roomId) {
+                    if (!this.isAdmin) return;
+                    const exists = this.hasRoomAccess(userId, roomId);
+                    if (exists) {
+                        await dbClient.from('user_room_access').delete().match({ user_id: userId, room_id: roomId });
+                    } else {
+                        await dbClient.from('user_room_access').insert([{ user_id: userId, room_id: roomId }]);
+                    }
                     this.fetchData();
                 }
             }
