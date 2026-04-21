@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>簡樸房終極管理系統 V18</title>
+    <title>簡樸房終極管理系統 V19 (修復股份讀取)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -24,11 +24,9 @@
             <div class="space-y-4">
                 <input v-model="email" type="email" placeholder="電郵地址" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                 <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                
                 <button @click="handleAuth" :disabled="loading" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform">
                     {{ loading ? '請稍候...' : (isRegistering ? '註冊帳號' : '登入系統') }}
                 </button>
-                
                 <button @click="isRegistering = !isRegistering" class="w-full text-slate-400 hover:text-blue-600 text-sm font-semibold transition-colors mt-2 block text-center">
                     {{ isRegistering ? '返回登入' : '還沒帳號？按此註冊' }}
                 </button>
@@ -171,7 +169,7 @@
                         <span>{{ getRoomName(exp.room_id) }} - {{ exp.description }} <span class="bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full text-[9px]">{{ exp.partner_name }} 代墊</span></span>
                         <div class="flex items-center gap-2">
                             <span class="text-orange-600">${{ exp.amount }}</span>
-                            <button v-if="isAdmin" @click="deleteExpense(exp.id)" class="text-red-400 font-black text-lg ml-2 hover:text-red-600">&times;</button>
+                            <button v-if="isAdmin" @click="deleteExpense(exp.id)" class="text-red-400 font-black text-lg ml-2">&times;</button>
                         </div>
                     </div>
                 </div>
@@ -332,7 +330,7 @@
                         let res;
                         if (this.isRegistering) {
                             res = await dbClient.auth.signUp({email:this.email, password:this.password});
-                            if(!res.error) alert('註冊成功！預設為受限觀看權限，請聯絡管理員授權房間。');
+                            if(!res.error) alert('註冊成功！系統預設為「觀看者」，請聯絡管理員為你開通房間權限。');
                         } else {
                             res = await dbClient.auth.signInWithPassword({email:this.email, password:this.password});
                         }
@@ -359,8 +357,13 @@
                 },
                 async fetchData() {
                     const prevMonth = this.getRelativeMonth(-1);
-                    const [resRooms, resRecs, resElec, resParts, resPropShares, resPrevRecs, resAccess, resUsers, resExp] = await Promise.all([
-                        dbClient.from('rooms').select('*').order('room_name'),
+                    
+                    // ★★★ 修復：先抓取 rooms 資料庫 ★★★
+                    const resRooms = await dbClient.from('rooms').select('*').order('room_name');
+                    this.rawRooms = resRooms.data || [];
+                    
+                    // 現在 propertyNames 已經有值了，我們再平行抓取其他資料
+                    const [resRecs, resElec, resParts, resPropShares, resPrevRecs, resAccess, resUsers, resExp] = await Promise.all([
                         dbClient.from('monthly_records').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('property_electricity').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('partners').select('*').order('name'),
@@ -375,6 +378,8 @@
                     this.userRoomAccess = resAccess.data || [];
                     this.usersList = resUsers.data || [];
                     this.expenses = resExp.data || [];
+                    
+                    // 現在 mapping partners 不會因為 propertyNames 為空而出錯了！
                     this.partners = (resParts.data || []).map(p => {
                         let shares = {};
                         this.propertyNames.forEach(pn => {
@@ -387,7 +392,7 @@
                     this.electricityTotals = {};
                     (resElec.data || []).forEach(e => { this.electricityTotals[e.property_name] = e; });
 
-                    this.rawRooms = (resRooms.data || []).map(room => {
+                    this.rawRooms = this.rawRooms.map(room => {
                         const rec = (resRecs.data || []).find(r => r.room_id === room.id);
                         const prevRec = (resPrevRecs.data || []).find(r => r.room_id === room.id);
                         room.prevReading = prevRec?.meter_reading || room.initial_meter_reading || 0;
@@ -424,7 +429,7 @@
                 },
                 getBalanceInfo(pName, room) {
                     const diff = this.getTotalPayable(pName, room) - (Number(room.record.amount_paid) || 0);
-                    return diff > 0 ? { text: `尚欠 $${diff}`, color: 'text-red-500' } : { text: '全數結清 ✅', color: 'text-green-600' };
+                    return diff > 0 ? { text: `尚欠 $${diff}`, color: 'text-red-500' } : { text: '全數結清 ✅', color: 'text-green-500' };
                 },
                 calcRate(pName) {
                     const t = this.electricityTotals[pName];
