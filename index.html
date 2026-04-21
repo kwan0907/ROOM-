@@ -7,9 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* 隱藏尚未載入完成的 Vue 元素 */
+        [v-cloak] { display: none; }
+    </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-    <div id="app" class="max-w-6xl mx-auto p-4">
+    <div id="loading-error" class="text-center p-10 text-red-500 font-bold">
+        正在載入系統... 如果這段文字一直出現，代表程式碼有語法錯誤，請按 F12 查看 Console。
+    </div>
+
+    <div id="app" v-cloak class="max-w-6xl mx-auto p-4">
         
         <div v-if="!session" class="max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-3xl font-black mb-6 text-center text-blue-700">{{ isRegistering ? '管理員註冊' : '管理員登入' }}</h2>
@@ -41,7 +49,7 @@
         </div>
 
         <div v-else>
-            <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex flex-wrap justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm gap-4">
                 <h1 class="text-2xl font-black text-gray-800">租務系統控制台</h1>
                 <div class="flex items-center gap-4">
                     <input type="month" v-model="currentMonth" @change="fetchData" class="p-2 border rounded font-bold">
@@ -60,17 +68,17 @@
             </div>
 
             <div v-for="(rooms, propName) in groupedRooms" :key="propName" class="mb-10">
-                <div class="flex items-center justify-between mb-4 bg-gray-200 p-3 rounded-lg">
+                <div class="flex flex-wrap items-center justify-between mb-4 bg-gray-200 p-3 rounded-lg gap-4">
                     <h2 class="text-xl font-black">{{ propName }}</h2>
-                    <div class="flex gap-4 items-center bg-white p-2 rounded shadow-inner">
-                        <span class="text-sm font-bold">當月總電費：</span>
-                        <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" type="number" placeholder="$ 總額" class="w-24 p-1 border rounded text-sm">
-                        <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" type="number" placeholder="總度數" class="w-24 p-1 border rounded text-sm">
+                    <div class="flex gap-2 items-center bg-white p-2 rounded shadow-inner">
+                        <span class="text-sm font-bold">當月大電單：</span>
+                        <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" type="number" placeholder="$ 總額" class="w-20 p-1 border rounded text-sm">
+                        <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" type="number" placeholder="總度數" class="w-20 p-1 border rounded text-sm">
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow overflow-hidden">
-                    <table class="w-full text-left">
+                <div class="bg-white rounded-xl shadow overflow-x-auto">
+                    <table class="w-full text-left min-w-max">
                         <thead class="bg-gray-50 border-b">
                             <tr>
                                 <th class="p-4 font-bold">房號</th>
@@ -80,7 +88,7 @@
                                 <th class="p-4 font-bold text-green-600">預繳電費</th>
                                 <th class="p-4 font-bold">實際電費</th>
                                 <th class="p-4 font-bold">需補/退</th>
-                                <th class="p-4 font-bold text-center">狀態</th>
+                                <th class="p-4 font-bold text-center">交租狀態</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -88,8 +96,8 @@
                                 <td class="p-4 font-bold text-lg">{{ room.room_name }}</td>
                                 <td class="p-4"><input v-model="room.tenant_name" @blur="updateTenant(room)" class="w-24 border-b border-transparent focus:border-blue-400 outline-none"></td>
                                 <td class="p-4 text-gray-500">${{ room.base_rent }}</td>
-                                <td class="p-4 bg-blue-50"><input v-model="room.record.electricity_units" @blur="saveRecord(room)" type="number" class="w-16 p-1 border rounded"></td>
-                                <td class="p-4 bg-green-50"><input v-model="room.record.prepaid_electricity" @blur="saveRecord(room)" type="number" class="w-16 p-1 border rounded"></td>
+                                <td class="p-4 bg-blue-50"><input v-model="room.record.electricity_units" @blur="saveRecord(room)" type="number" class="w-16 p-1 border rounded text-center"></td>
+                                <td class="p-4 bg-green-50"><input v-model="room.record.prepaid_electricity" @blur="saveRecord(room)" type="number" class="w-16 p-1 border rounded text-center"></td>
                                 <td class="p-4 text-orange-600 font-bold">${{ calculateActualFee(propName, room.record.electricity_units) }}</td>
                                 <td class="p-4 font-black">
                                     <span :class="getBalance(propName, room).color">
@@ -97,7 +105,7 @@
                                     </span>
                                 </td>
                                 <td class="p-4 text-center">
-                                    <input type="checkbox" v-model="room.record.rent_paid" @change="saveRecord(room)" class="w-5 h-5">
+                                    <input type="checkbox" v-model="room.record.rent_paid" @change="saveRecord(room)" class="w-6 h-6 cursor-pointer rounded text-blue-600">
                                 </td>
                             </tr>
                         </tbody>
@@ -108,7 +116,10 @@
     </div>
 
     <script>
-        // 請務必將這裡換成你的正確資料
+        // 確認 Vue 載入成功後，隱藏錯誤提示
+        document.getElementById('loading-error').style.display = 'none';
+
+        // 你的專屬 Supabase 連線資料
         const supabaseUrl = 'https://duneupvlgjxbqkuosaqp.supabase.co'; 
         const supabaseKey = 'sb_publishable_FgzUFLNiaF2cOrheTzYsAA_3oU2LBaG';
         
@@ -157,7 +168,7 @@
                         let result;
                         if (this.isRegistering) {
                             result = await supabase.auth.signUp({ email: this.email, password: this.password });
-                            if (!result.error) alert('註冊成功！請查看電郵驗證（或直接嘗試登入）。');
+                            if (!result.error) alert('註冊成功！請直接嘗試登入。');
                         } else {
                             result = await supabase.auth.signInWithPassword({ email: this.email, password: this.password });
                         }
@@ -185,7 +196,9 @@
                     const prepaid = room.record.prepaid_electricity || 0;
                     const diff = actual - prepaid;
                     
-                    if (this.electricityTotals[propName].total_bill_amount === 0) return { text: '-', color: 'text-gray-300' };
+                    if (!this.electricityTotals[propName] || this.electricityTotals[propName].total_bill_amount == 0) {
+                        return { text: '-', color: 'text-gray-300' };
+                    }
                     if (diff > 0) return { text: `補 $${diff}`, color: 'text-red-500' };
                     if (diff < 0) return { text: `退 $${Math.abs(diff)}`, color: 'text-green-500' };
                     return { text: '清', color: 'text-gray-400' };
@@ -198,9 +211,9 @@
                     this.electricityTotals = {};
                     elecData?.forEach(e => { this.electricityTotals[e.property_name] = e; });
 
-                    this.rawRooms = rooms.map(room => {
+                    this.rawRooms = (rooms || []).map(room => {
                         const existing = records?.find(r => r.room_id === room.id);
-                        room.record = existing || { room_id: room.id, billing_month: this.currentMonth, rent_paid: false, electricity_units: 0, prepaid_electricity: 0 };
+                        room.record = existing || { room_id: room.id, billing_month: this.currentMonth, rent_paid: false, electricity_units: '', prepaid_electricity: '' };
                         return room;
                     });
                 },
@@ -232,7 +245,9 @@
                     this.fetchData();
                 }
             }
-        }).mount('#app');
+        });
+        
+        app.mount('#app');
     </script>
 </body>
 </html>
