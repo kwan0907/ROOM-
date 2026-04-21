@@ -3,127 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>簡樸房管理系統 V2</title>
+    <title>專業租務管理系統 V3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         [v-cloak] { display: none; }
+        .card-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
-    <div id="loading-error" class="text-center p-10 text-red-500 font-bold">
-        正在載入系統... 如果這段文字一直出現，請按 Ctrl + F5 強制重新整理。
-    </div>
-
-    <div id="app" v-cloak class="max-w-6xl mx-auto p-4">
+<body class="bg-slate-50 text-slate-900 font-sans">
+    <div id="app" v-cloak class="max-w-7xl mx-auto p-4 md:p-8">
         
-        <div v-if="!session" class="max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-            <h2 class="text-3xl font-black mb-6 text-center text-blue-700">{{ isRegistering ? '管理員註冊' : '管理員登入' }}</h2>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-bold mb-1">電郵地址</label>
-                    <input v-model="email" type="email" placeholder="example@mail.com" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        <div v-if="!session" class="max-w-md mx-auto mt-20 bg-white p-10 rounded-3xl shadow-2xl border border-slate-100">
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-200">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 </div>
-                <div>
-                    <label class="block text-sm font-bold mb-1">密碼</label>
-                    <input v-model="password" type="password" placeholder="******" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                
-                <button @click="handleAuth" :disabled="loading" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-400">
-                    {{ loading ? '處理中...' : (isRegistering ? '立即註冊' : '安全登入') }}
-                </button>
-                
-                <div class="text-center mt-4">
-                    <button @click="isRegistering = !isRegistering" class="text-blue-500 hover:underline text-sm font-semibold">
-                        {{ isRegistering ? '已有帳號？按此登入' : '沒有帳號？按此註冊管理員' }}
-                    </button>
-                </div>
+                <h2 class="text-3xl font-black text-slate-800">{{ isRegistering ? '註冊管理帳號' : '管理系統登入' }}</h2>
             </div>
             
-            <div v-if="authError" class="mt-4 p-3 bg-red-100 text-red-600 text-sm rounded border border-red-200">
-                {{ authError }}
+            <div class="space-y-5">
+                <input v-model="email" type="email" placeholder="電郵地址" class="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                
+                <button @click="handleAuth" :disabled="loading" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95">
+                    {{ loading ? '請稍候...' : (isRegistering ? '立即註冊' : '登入系統') }}
+                </button>
+                
+                <button @click="isRegistering = !isRegistering" class="w-full text-slate-400 hover:text-blue-600 text-sm font-semibold transition-colors">
+                    {{ isRegistering ? '返回登入' : '還沒有帳號？按此註冊' }}
+                </button>
             </div>
         </div>
 
         <div v-else>
-            <div class="flex flex-wrap justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm gap-4">
-                <h1 class="text-2xl font-black text-gray-800">租務系統控制台</h1>
-                <div class="flex items-center gap-4">
-                    <input type="month" v-model="currentMonth" @change="fetchData" class="p-2 border rounded font-bold">
-                    <button @click="handleLogout" class="text-sm font-bold text-gray-500 hover:text-red-500">登出</button>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 mb-1">租務概覽</h1>
+                    <p class="text-slate-500 font-medium">歡迎回來，今天也要高效管理你的物業。</p>
+                </div>
+                <div class="flex items-center gap-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+                    <input type="month" v-model="currentMonth" @change="fetchData" class="font-bold border-none bg-transparent focus:ring-0 outline-none">
+                    <div class="w-px h-6 bg-slate-200"></div>
+                    <button @click="handleLogout" class="text-slate-400 hover:text-red-500 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    </button>
                 </div>
             </div>
 
-            <div class="bg-white p-6 rounded-xl shadow-sm mb-8 border-t-4 border-blue-500">
-                <h3 class="font-bold mb-4 flex items-center gap-2">🏠 新增房產/單位</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input v-model="newRoom.property_name" placeholder="物業名稱 (如：康樂)" class="p-2 border rounded">
-                    <input v-model="newRoom.room_name" placeholder="房間 (如：A室)" class="p-2 border rounded">
-                    <input v-model="newRoom.base_rent" type="number" placeholder="底租" class="p-2 border rounded">
-                    <button @click="addRoom" class="bg-blue-500 text-white font-bold rounded hover:bg-blue-600 transition">新增</button>
+            <div class="bg-white p-8 rounded-3xl card-shadow mb-10 border border-slate-100">
+                <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+                    <span class="w-2 h-6 bg-blue-600 rounded-full"></span>
+                    新增物業單位
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <input v-model="newRoom.property_name" placeholder="物業 (康樂/平安)" class="p-4 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all border border-transparent">
+                    <input v-model="newRoom.room_name" placeholder="房號 (A室)" class="p-4 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all border border-transparent">
+                    <input v-model="newRoom.nickname" placeholder="稱呼 (租客姓名)" class="p-4 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all border border-transparent">
+                    <input v-model="newRoom.base_rent" type="number" placeholder="底租" class="p-4 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all border border-transparent">
+                    <button @click="addRoom" class="bg-slate-900 text-white font-bold rounded-2xl hover:bg-blue-600 transition-all active:scale-95 shadow-md shadow-slate-200">
+                        確認新增
+                    </button>
                 </div>
             </div>
 
-            <div v-for="(rooms, propName) in groupedRooms" :key="propName" class="mb-10">
-                <div class="flex flex-wrap items-center justify-between mb-4 bg-gray-200 p-3 rounded-lg gap-4">
-                    <h2 class="text-xl font-black">{{ propName }}</h2>
-                    <div class="flex gap-2 items-center bg-white p-2 rounded shadow-inner">
-                        <span class="text-sm font-bold">當月大電單：</span>
-                        <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" type="number" placeholder="$ 總額" class="w-20 p-1 border rounded text-sm">
-                        <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" type="number" placeholder="總度數" class="w-20 p-1 border rounded text-sm">
+            <div v-for="(rooms, propName) in groupedRooms" :key="propName" class="mb-12">
+                <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
+                    <h2 class="text-4xl font-black text-slate-800">{{ propName }}</h2>
+                    <div class="flex gap-4 bg-blue-50 p-4 rounded-3xl border border-blue-100 shadow-sm shadow-blue-50">
+                        <div class="text-center px-4 border-r border-blue-200">
+                            <label class="text-[10px] uppercase tracking-wider font-black text-blue-400 block mb-1">本月總電費</label>
+                            <div class="flex items-center text-blue-700 font-black italic">
+                                <span>$</span>
+                                <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" type="number" class="bg-transparent border-none w-20 p-0 text-right focus:ring-0">
+                            </div>
+                        </div>
+                        <div class="text-center px-4">
+                            <label class="text-[10px] uppercase tracking-wider font-black text-blue-400 block mb-1">大電總度數</label>
+                            <div class="flex items-center text-blue-700 font-black italic">
+                                <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" type="number" class="bg-transparent border-none w-20 p-0 text-right focus:ring-0">
+                                <span class="ml-1 text-sm font-medium">度</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow overflow-x-auto">
-                    <table class="w-full text-left min-w-max">
-                        <thead class="bg-gray-50 border-b">
-                            <tr>
-                                <th class="p-4 font-bold">房號</th>
-                                <th class="p-4 font-bold">租戶</th>
-                                <th class="p-4 font-bold">底租</th>
-                                <th class="p-4 font-bold text-blue-600">本月度數</th>
-                                <th class="p-4 font-bold text-green-600">預繳電費</th>
-                                <th class="p-4 font-bold">實際電費</th>
-                                <th class="p-4 font-bold">需補/退</th>
-                                <th class="p-4 font-bold text-center">交租狀態</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="room in rooms" :key="room.id" class="border-b hover:bg-gray-50 transition">
-                                <td class="p-4 font-bold text-lg">{{ room.room_name }}</td>
-                                <td class="p-4"><input v-model="room.tenant_name" @blur="updateTenant(room)" class="w-24 border-b border-transparent focus:border-blue-400 outline-none"></td>
-                                <td class="p-4 text-gray-500">${{ room.base_rent }}</td>
-                                <td class="p-4 bg-blue-50"><input v-model="room.record.electricity_units" @blur="saveRecord(room)" type="number" class="w-16 p-1 border rounded text-center"></td>
-                                <td class="p-4 bg-green-50"><input v-model="room.record.prepaid_electricity" @blur="saveRecord(room)" type="number" class="w-16 p-1 border rounded text-center"></td>
-                                <td class="p-4 text-orange-600 font-bold">${{ calculateActualFee(propName, room.record.electricity_units) }}</td>
-                                <td class="p-4 font-black">
-                                    <span :class="getBalance(propName, room).color">
-                                        {{ getBalance(propName, room).text }}
-                                    </span>
-                                </td>
-                                <td class="p-4 text-center">
-                                    <input type="checkbox" v-model="room.record.rent_paid" @change="saveRecord(room)" class="w-6 h-6 cursor-pointer rounded text-blue-600">
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div v-for="room in rooms" :key="room.id" class="bg-white rounded-[2.5rem] p-6 card-shadow border border-slate-50 relative overflow-hidden transition-all hover:translate-y-[-4px]">
+                        <div :class="room.record.rent_paid ? 'bg-green-500' : (isOverdue(room.record.rent_paid) ? 'bg-red-500' : 'bg-slate-200')" class="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-10"></div>
+
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{ room.room_name }}</span>
+                                <input v-model="room.nickname" @blur="updateRoomDetails(room)" class="text-xl font-black text-slate-800 block bg-transparent outline-none border-b-2 border-transparent focus:border-blue-500 w-full" placeholder="未命名">
+                            </div>
+                            <input type="checkbox" v-model="room.record.rent_paid" @change="saveRecord(room)" class="w-8 h-8 rounded-xl text-blue-600 focus:ring-blue-500 cursor-pointer border-slate-200">
+                        </div>
+
+                        <div class="space-y-4 mb-6">
+                            <div class="flex justify-between items-center text-sm font-bold text-slate-500 bg-slate-50 p-3 rounded-2xl">
+                                <span>每月底租</span>
+                                <span class="text-slate-800">${{ room.base_rent }}</span>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+                                    <div class="bg-slate-100 p-2 rounded-xl text-center">
+                                        <span class="text-slate-400 block mb-1">上期度數</span>
+                                        <input v-model="room.record.prev_reading" @blur="saveRecord(room)" type="number" class="w-full bg-transparent text-center text-slate-800 outline-none">
+                                    </div>
+                                    <div class="bg-blue-100 p-2 rounded-xl text-center">
+                                        <span class="text-blue-400 block mb-1">本期度數</span>
+                                        <input v-model="room.record.curr_reading" @blur="saveRecord(room)" type="number" class="w-full bg-transparent text-center text-blue-700 outline-none">
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center px-3 text-xs font-bold text-slate-400 italic">
+                                    <span>自動計算用電：</span>
+                                    <span class="text-slate-900">{{ (room.record.curr_reading - room.record.prev_reading) || 0 }} 度</span>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-center text-sm font-bold p-3 rounded-2xl bg-orange-50 border border-orange-100">
+                                <span class="text-orange-400 uppercase tracking-widest text-[10px]">預繳電費</span>
+                                <input v-model="room.record.prepaid_electricity" @blur="saveRecord(room)" type="number" class="w-20 bg-transparent text-right outline-none text-orange-700">
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 flex justify-between items-end">
+                            <div class="text-xs font-bold">
+                                <p class="text-slate-400 mb-1">需補/退金額：</p>
+                                <span :class="getBalance(propName, room).color" class="text-lg font-black">
+                                    {{ getBalance(propName, room).text }}
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <span v-if="room.record.rent_paid" class="text-[10px] font-black bg-green-100 text-green-600 px-3 py-1 rounded-full">已結清</span>
+                                <span v-else-if="isOverdue(room.record.rent_paid)" class="text-[10px] font-black bg-red-100 text-red-600 px-3 py-1 rounded-full animate-pulse">逾期未交</span>
+                                <span v-else class="text-[10px] font-black bg-slate-100 text-slate-400 px-3 py-1 rounded-full">未付</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 隱藏錯誤提示
-        document.getElementById('loading-error').style.display = 'none';
-
-        // 專案金鑰
         const supabaseUrl = 'https://duneupvlgjxbqkuosaqp.supabase.co'; 
         const supabaseKey = 'sb_publishable_FgzUFLNiaF2cOrheTzYsAA_3oU2LBaG';
-        
-        // 【終極解決方案】改名為 dbClient，徹底避開命名衝突！
-        const dbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const db = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         const app = Vue.createApp({
             data() {
@@ -137,7 +166,7 @@
                     currentMonth: new Date().toISOString().slice(0, 7),
                     rawRooms: [],
                     electricityTotals: {},
-                    newRoom: { property_name: '', room_name: '', base_rent: '' }
+                    newRoom: { property_name: '', room_name: '', nickname: '', base_rent: '' }
                 }
             },
             computed: {
@@ -156,83 +185,83 @@
                 }
             },
             async mounted() {
-                const { data } = await dbClient.auth.getSession();
+                const { data } = await db.auth.getSession();
                 this.session = data.session;
                 if (this.session) this.fetchData();
             },
             methods: {
                 async handleAuth() {
                     this.loading = true;
-                    this.authError = null;
                     try {
-                        let result;
+                        let res;
                         if (this.isRegistering) {
-                            result = await dbClient.auth.signUp({ email: this.email, password: this.password });
-                            if (!result.error) alert('註冊成功！請直接嘗試登入。');
+                            res = await db.auth.signUp({ email: this.email, password: this.password });
+                            if(!res.error) alert('註冊成功！');
                         } else {
-                            result = await dbClient.auth.signInWithPassword({ email: this.email, password: this.password });
+                            res = await db.auth.signInWithPassword({ email: this.email, password: this.password });
                         }
-                        
-                        if (result.error) throw result.error;
-                        this.session = result.data.session;
+                        if (res.error) throw res.error;
+                        this.session = res.data.session;
                         if (this.session) this.fetchData();
-                    } catch (err) {
-                        this.authError = err.message;
-                    } finally {
-                        this.loading = false;
-                    }
+                    } catch (err) { alert(err.message); }
+                    finally { this.loading = false; }
                 },
-                async handleLogout() {
-                    await dbClient.auth.signOut();
-                    this.session = null;
+                async handleLogout() { await db.auth.signOut(); this.session = null; },
+                isOverdue(isPaid) {
+                    const today = new Date();
+                    const [year, month] = this.currentMonth.split('-');
+                    return (today.getFullYear() == year && (today.getMonth()+1) == month && today.getDate() > 7 && !isPaid);
                 },
-                calculateActualFee(propName, units) {
+                calculateActualFee(propName, room) {
                     const total = this.electricityTotals[propName];
-                    if (!total || !total.total_units_used || !units) return 0;
-                    return Math.round((total.total_bill_amount / total.total_units_used) * units);
+                    const unitsUsed = (room.record.curr_reading || 0) - (room.record.prev_reading || 0);
+                    if (!total || !total.total_units_used || unitsUsed <= 0) return 0;
+                    return Math.round((total.total_bill_amount / total.total_units_used) * unitsUsed);
                 },
                 getBalance(propName, room) {
-                    const actual = this.calculateActualFee(propName, room.record.electricity_units);
+                    if (this.electricityTotals[propName].total_bill_amount == 0) return { text: '-', color: 'text-slate-300' };
+                    const actual = this.calculateActualFee(propName, room);
                     const prepaid = room.record.prepaid_electricity || 0;
                     const diff = actual - prepaid;
-                    
-                    if (!this.electricityTotals[propName] || this.electricityTotals[propName].total_bill_amount == 0) {
-                        return { text: '-', color: 'text-gray-300' };
-                    }
                     if (diff > 0) return { text: `補 $${diff}`, color: 'text-red-500' };
                     if (diff < 0) return { text: `退 $${Math.abs(diff)}`, color: 'text-green-500' };
-                    return { text: '清', color: 'text-gray-400' };
+                    return { text: '清', color: 'text-slate-400' };
                 },
                 async fetchData() {
-                    const { data: rooms } = await dbClient.from('rooms').select('*').order('room_name');
-                    const { data: records } = await dbClient.from('monthly_records').select('*').eq('billing_month', this.currentMonth);
-                    const { data: elecData } = await dbClient.from('property_electricity').select('*').eq('billing_month', this.currentMonth);
+                    const { data: rooms } = await db.from('rooms').select('*').order('room_name');
+                    const { data: records } = await db.from('monthly_records').select('*').eq('billing_month', this.currentMonth);
+                    const { data: elecData } = await db.from('property_electricity').select('*').eq('billing_month', this.currentMonth);
 
                     this.electricityTotals = {};
                     elecData?.forEach(e => { this.electricityTotals[e.property_name] = e; });
 
                     this.rawRooms = (rooms || []).map(room => {
-                        const existing = records?.find(r => r.room_id === room.id);
-                        room.record = existing || { room_id: room.id, billing_month: this.currentMonth, rent_paid: false, electricity_units: '', prepaid_electricity: '' };
+                        const rec = records?.find(r => r.room_id === room.id);
+                        room.record = rec || { 
+                            room_id: room.id, billing_month: this.currentMonth, rent_paid: false, 
+                            prev_reading: '', curr_reading: '', prepaid_electricity: '' 
+                        };
                         return room;
                     });
                 },
-                async updateTenant(room) {
-                    await dbClient.from('rooms').update({ tenant_name: room.tenant_name }).eq('id', room.id);
+                async updateRoomDetails(room) {
+                    await db.from('rooms').update({ nickname: room.nickname }).eq('id', room.id);
                 },
                 async saveRecord(room) {
                     const payload = {
                         room_id: room.id,
                         billing_month: this.currentMonth,
                         rent_paid: room.record.rent_paid,
-                        electricity_units: room.record.electricity_units || 0,
+                        prev_reading: room.record.prev_reading || 0,
+                        curr_reading: room.record.curr_reading || 0,
+                        electricity_units: (room.record.curr_reading - room.record.prev_reading) || 0,
                         prepaid_electricity: room.record.prepaid_electricity || 0
                     };
-                    await dbClient.from('monthly_records').upsert(payload, { onConflict: 'room_id, billing_month' });
+                    await db.from('monthly_records').upsert(payload, { onConflict: 'room_id, billing_month' });
                 },
                 async saveElectricityTotal(propName) {
                     const t = this.electricityTotals[propName];
-                    await dbClient.from('property_electricity').upsert({
+                    await db.from('property_electricity').upsert({
                         property_name: propName, billing_month: this.currentMonth,
                         total_bill_amount: t.total_bill_amount || 0,
                         total_units_used: t.total_units_used || 0
@@ -240,14 +269,12 @@
                 },
                 async addRoom() {
                     if (!this.newRoom.property_name || !this.newRoom.room_name) return;
-                    await dbClient.from('rooms').insert([this.newRoom]);
-                    this.newRoom = { property_name: '', room_name: '', base_rent: '' };
+                    await db.from('rooms').insert([this.newRoom]);
+                    this.newRoom = { property_name: '', room_name: '', nickname: '', base_rent: '' };
                     this.fetchData();
                 }
             }
-        });
-        
-        app.mount('#app');
+        }).mount('#app');
     </script>
 </body>
 </html>
