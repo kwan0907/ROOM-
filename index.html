@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>簡樸房終極系統 V21 (精準滾存版)</title>
+    <title>簡樸房終極管理系統 V22 (智能水費版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -44,7 +44,7 @@
                     <span class="px-3 font-black text-slate-700 text-xs">{{ displayMonth }}</span>
                     <button @click="changeMonth(1)" class="p-2 text-slate-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg></button>
                 </div>
-                <button @click="handleLogout" class="p-2 text-slate-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+                <button @click="handleLogout" class="p-2 text-slate-400 hover:text-red-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
             </div>
 
             <div class="flex gap-2 px-4 mb-4 mt-2">
@@ -55,25 +55,41 @@
 
             <div v-if="activeTab === 'rent'">
                 <div class="flex gap-2 px-4 mb-4 overflow-x-auto no-scrollbar py-1">
-                    <button @click="selectedProp = '全部'" :class="selectedProp === '全部' ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap">全部</button>
-                    <button v-for="p in propertyNames" :key="p" @click="selectedProp = p" :class="selectedProp === p ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap">{{ p }}</button>
+                    <button @click="selectedProp = '全部'" :class="selectedProp === '全部' ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap transition-all">全部</button>
+                    <button v-for="p in propertyNames" :key="p" @click="selectedProp = p" :class="selectedProp === p ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap transition-all">{{ p }}</button>
                 </div>
 
                 <div v-for="(rooms, propName) in filteredGroupedRooms" :key="propName" class="px-4 mb-8">
                     <div class="mb-4 bg-slate-800 text-white p-5 rounded-[2rem] shadow-lg">
                         <div class="flex justify-between items-center mb-3">
                             <h2 class="text-xl font-black">{{ propName }}</h2>
-                            <span class="text-[10px] bg-blue-600 px-2 py-1 rounded-md font-bold">單價: ${{ calcRate(propName) }}/度</span>
                         </div>
-                        <div class="grid grid-cols-2 gap-4 bg-slate-700 p-3 rounded-3xl">
-                            <div class="text-center">
-                                <label class="text-[9px] text-slate-400 block mb-1 font-bold">電費總金額</label>
-                                <div class="flex items-center justify-center font-black">$<input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-16 bg-transparent text-center outline-none"></div>
+                        
+                        <div class="grid grid-cols-4 gap-2 bg-slate-700 p-3 rounded-2xl">
+                            <div class="col-span-2 grid grid-cols-2 bg-blue-900/30 rounded-xl p-2 border border-blue-800/50">
+                                <div class="text-center border-r border-blue-800/50 pr-1">
+                                    <label class="text-[8px] text-blue-300 block mb-1 font-bold">大電單($)</label>
+                                    <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                </div>
+                                <div class="text-center pl-1">
+                                    <label class="text-[8px] text-blue-300 block mb-1 font-bold">總電度</label>
+                                    <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                </div>
                             </div>
-                            <div class="text-center border-l border-slate-600">
-                                <label class="text-[9px] text-slate-400 block mb-1 font-bold">總度數</label>
-                                <div class="flex items-center justify-center font-black"><input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-16 bg-transparent text-center outline-none"></div>
+                            <div class="col-span-2 grid grid-cols-2 bg-cyan-900/30 rounded-xl p-2 border border-cyan-800/50">
+                                <div class="text-center border-r border-cyan-800/50 pr-1">
+                                    <label class="text-[8px] text-cyan-300 block mb-1 font-bold">大水單($)</label>
+                                    <input v-model="electricityTotals[propName].total_water_bill" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                </div>
+                                <div class="text-center pl-1">
+                                    <label class="text-[8px] text-cyan-300 block mb-1 font-bold">總水度</label>
+                                    <input v-model="electricityTotals[propName].total_water_units" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                </div>
                             </div>
+                        </div>
+                        <div class="mt-2 flex justify-between text-[9px] font-bold px-2">
+                            <span class="text-blue-400">電費單價: ${{ calcRate(propName, 'elec') }}/度</span>
+                            <span class="text-cyan-400">水費單價: ${{ calcRate(propName, 'water') }}/度</span>
                         </div>
                     </div>
 
@@ -82,7 +98,7 @@
                             <div class="flex justify-between items-start mb-4">
                                 <div>
                                     <h3 class="text-2xl font-black text-slate-800">{{ room.room_name }}</h3>
-                                    <input v-model="room.nickname" @blur="updateRoom(room)" :disabled="!isAdmin" class="text-xs font-bold text-slate-400 bg-transparent border-b w-full outline-none focus:border-blue-400">
+                                    <input v-model="room.nickname" @blur="updateRoom(room)" :disabled="!isAdmin" class="text-xs font-bold text-slate-400 bg-transparent border-b w-full outline-none">
                                 </div>
                                 <div class="flex flex-col items-end gap-1">
                                     <span v-if="room.record.rent_paid" class="px-3 py-1 bg-green-500 text-white font-black text-[9px] rounded-full">帳目已清</span>
@@ -91,14 +107,10 @@
                             </div>
 
                             <div class="space-y-3 mb-6">
-                                <div class="grid grid-cols-2 gap-3 text-xs font-bold">
-                                    <div class="bg-slate-50 p-3 rounded-2xl flex justify-between items-center">
-                                        <span>底租</span>
-                                        <div class="flex items-center">$<input v-model="room.base_rent" @blur="updateRoom(room)" :disabled="!isAdmin" type="number" class="w-12 text-right bg-transparent outline-none"></div>
-                                    </div>
-                                    <div class="bg-slate-50 p-3 rounded-2xl flex justify-between items-center">
-                                        <span>水費</span>
-                                        <div class="flex items-center text-cyan-600">$<input v-model="room.record.water_fee" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" class="w-12 text-right bg-transparent outline-none"></div>
+                                <div class="bg-slate-50 p-3 rounded-2xl flex justify-between items-center">
+                                    <span class="text-xs font-bold text-slate-500">底租</span>
+                                    <div class="flex items-center text-sm font-black text-slate-800">
+                                        $<input v-model="room.base_rent" @blur="updateRoom(room)" :disabled="!isAdmin" type="number" class="w-16 text-right bg-transparent outline-none">
                                     </div>
                                 </div>
 
@@ -114,14 +126,32 @@
                                         <div class="flex-1"><p class="text-[9px] text-slate-400 font-bold mb-1">上期: {{ room.prevReading }}</p></div>
                                         <div class="flex-1"><input v-model="room.record.meter_reading" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="輸入本期" class="w-full bg-white text-center font-black text-blue-600 border border-blue-200 rounded-lg outline-none text-sm p-1"></div>
                                     </div>
-                                    <div v-else class="text-center"><input v-model="room.record.manual_units" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="直接輸入度數" class="w-24 bg-white text-center font-black text-blue-600 border border-blue-200 rounded-lg outline-none text-sm p-1"></div>
+                                    <div v-else class="text-center"><input v-model="room.record.manual_units" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="輸入度數" class="w-24 bg-white text-center font-black text-blue-600 border border-blue-200 rounded-lg outline-none text-sm p-1"></div>
                                     <div class="mt-3 flex justify-between text-[10px] font-black italic">
                                         <span class="text-slate-400">用量: {{ getRoomUnits(room) }} 度</span>
                                         <span class="text-blue-700">分攤: ${{ calculateActualFee(propName, room) }}</span>
                                     </div>
                                 </div>
+
+                                <div class="bg-cyan-50/50 p-4 rounded-3xl border border-cyan-100">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-xs font-black text-cyan-700">💧 水費結算</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center bg-white px-2 py-1 rounded-xl border border-cyan-200 shadow-sm">
+                                            <input v-model="room.record.water_units" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="輸入度數" class="w-16 text-center bg-transparent outline-none text-xs font-black text-cyan-700">
+                                            <span class="text-[10px] text-cyan-500 ml-1 font-bold">度</span>
+                                        </div>
+                                        <div class="flex items-center justify-end">
+                                            <span v-if="electricityTotals[propName]?.total_water_units > 0" class="text-sm font-black text-cyan-600 italic">分攤: ${{ calculateWaterFee(propName, room) }}</span>
+                                            <div v-else class="flex items-center text-sm font-black text-cyan-600">
+                                                手動收費: $<input v-model="room.record.water_fee" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" class="w-12 text-right bg-transparent outline-none border-b border-cyan-200">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 
-                                <div v-if="room.prevDebt > 0" class="flex justify-between text-[10px] font-black text-red-500 px-2 animate-pulse"><span>⚠️ 上月未清欠款滾存</span><span>${{ room.prevDebt }}</span></div>
+                                <div v-if="room.prevDebt > 0" class="flex justify-between text-[10px] font-black text-red-500 px-2 animate-pulse pt-2"><span>⚠️ 上月未清欠款滾存</span><span>${{ room.prevDebt }}</span></div>
                                 <div class="flex justify-between items-center px-2 pt-2 border-t border-slate-100"><span class="text-sm font-black text-slate-800">本月應收總計</span><span class="text-2xl font-black text-blue-800 tracking-tighter">${{ getTotalPayable(propName, room) }}</span></div>
                             </div>
 
@@ -169,7 +199,7 @@
                         <span>{{ getRoomName(exp.room_id) }} - {{ exp.description }} <span class="bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full text-[9px]">{{ exp.partner_name }} 代墊</span></span>
                         <div class="flex items-center gap-2">
                             <span class="text-orange-600">${{ exp.amount }}</span>
-                            <button v-if="isAdmin" @click="deleteExpense(exp.id)" class="text-red-400 font-black text-lg ml-2">&times;</button>
+                            <button v-if="isAdmin" @click="deleteExpense(exp.id)" class="text-red-400 font-black text-lg ml-2 hover:text-red-600">&times;</button>
                         </div>
                     </div>
                 </div>
@@ -301,7 +331,7 @@
                         const rooms = this.rawRooms.filter(r => r.property_name === pName);
                         const income = rooms.reduce((s, r) => s + (Number(r.record.amount_paid)||0), 0);
                         const elec = rooms.reduce((s, r) => s + this.calculateActualFee(pName, r), 0);
-                        const water = rooms.reduce((s, r) => s + (Number(r.record.water_fee)||0), 0);
+                        const water = rooms.reduce((s, r) => s + this.calculateWaterFee(pName, r), 0);
                         const expTotal = this.expenses.filter(e => rooms.some(r => r.id === e.room_id)).reduce((s, e) => s + Number(e.amount), 0);
                         
                         const netProfit = income - elec - water - expTotal;
@@ -380,7 +410,7 @@
                     });
 
                     const tempElec = {};
-                    tempPropertyNames.forEach(pn => { tempElec[pn] = { property_name: pn, billing_month: this.currentMonth, total_bill_amount: '', total_units_used: '' }; });
+                    tempPropertyNames.forEach(pn => { tempElec[pn] = { property_name: pn, billing_month: this.currentMonth, total_bill_amount: '', total_units_used: '', total_water_bill: '', total_water_units: '' }; });
                     (resElec.data || []).forEach(e => { tempElec[e.property_name] = e; });
                     this.electricityTotals = tempElec;
 
@@ -388,20 +418,17 @@
                         const rec = (resRecs.data || []).find(r => r.room_id === room.id);
                         const prevRec = (resPrevRecs.data || []).find(r => r.room_id === room.id);
                         room.prevReading = prevRec?.meter_reading || room.initial_meter_reading || 0;
-                        
-                        // ★★★ 精準滾存邏輯：讀取上個月鎖死存好的 total_payable ★★★
                         let prevDebt = 0;
                         if (prevRec) {
                             let prevPayable = Number(prevRec.total_payable);
                             if (!prevPayable && prevPayable !== 0) {
-                                // 兼容舊資料：如果舊資料還沒存過 total_payable，手動幫它加總
                                 const fallbackElec = Number(prevRec.electricity_fee) || 0;
                                 prevPayable = Number(room.base_rent) + (Number(prevRec.water_fee)||0) + fallbackElec;
                             }
                             const prevPaid = Number(prevRec.amount_paid) || 0;
                             if (prevPayable > prevPaid) prevDebt = prevPayable - prevPaid;
                         }
-                        room.record = rec || { room_id: room.id, billing_month: this.currentMonth, rent_paid: false, amount_paid: '', water_fee: '', meter_reading: '', manual_units: '', payment_account: null };
+                        room.record = rec || { room_id: room.id, billing_month: this.currentMonth, rent_paid: false, amount_paid: '', water_fee: '', water_units: '', meter_reading: '', manual_units: '', payment_account: null };
                         room.prevDebt = prevDebt;
                         room.elecMode = (room.record.manual_units && !room.record.meter_reading) ? 'manual' : 'reading';
                         return room;
@@ -423,16 +450,25 @@
                     if (!total || !total.total_units_used) return 0;
                     return Math.round((total.total_bill_amount / total.total_units_used) * this.getRoomUnits(room));
                 },
+                calculateWaterFee(pName, room) {
+                    const t = this.electricityTotals[pName];
+                    const units = Number(room.record.water_units) || 0;
+                    if (t && Number(t.total_water_units) > 0) {
+                        return Math.round((Number(t.total_water_bill) / Number(t.total_water_units)) * units);
+                    }
+                    return Number(room.record.water_fee) || 0;
+                },
                 getTotalPayable(pName, room) {
-                    return (Number(room.base_rent)||0) + this.calculateActualFee(pName, room) + (Number(room.record.water_fee)||0) + (room.prevDebt||0);
+                    return (Number(room.base_rent)||0) + this.calculateActualFee(pName, room) + this.calculateWaterFee(pName, room) + (room.prevDebt||0);
                 },
                 getBalanceInfo(pName, room) {
                     const diff = this.getTotalPayable(pName, room) - (Number(room.record.amount_paid) || 0);
                     return diff > 0 ? { text: `尚欠 $${diff}`, color: 'text-red-500' } : { text: '全數結清 ✅', color: 'text-green-500' };
                 },
-                calcRate(pName) {
+                calcRate(pName, type = 'elec') {
                     const t = this.electricityTotals[pName];
-                    return (t && t.total_units_used) ? (t.total_bill_amount / t.total_units_used).toFixed(2) : '0.00';
+                    if (type === 'elec') return (t && t.total_units_used) ? (t.total_bill_amount / t.total_units_used).toFixed(2) : '0.00';
+                    if (type === 'water') return (t && t.total_water_units) ? (t.total_water_bill / t.total_water_units).toFixed(2) : '0.00';
                 },
                 async addExpense() {
                     if (!this.isAdmin || !this.newExpense.room_id || !this.newExpense.partner_name || !this.newExpense.amount) return;
@@ -444,34 +480,33 @@
                 getRoomName(id) { const r = this.rawRooms.find(x => x.id === id); return r ? r.room_name : ''; },
                 async saveElectricityTotal(pName) {
                     const t = this.electricityTotals[pName];
-                    await dbClient.from('property_electricity').upsert({ property_name: pName, billing_month: this.currentMonth, total_bill_amount: t.total_bill_amount||0, total_units_used: t.total_units_used||0 }, { onConflict: 'property_name, billing_month' });
+                    await dbClient.from('property_electricity').upsert({ 
+                        property_name: pName, billing_month: this.currentMonth, 
+                        total_bill_amount: t.total_bill_amount||0, total_units_used: t.total_units_used||0,
+                        total_water_bill: t.total_water_bill||0, total_water_units: t.total_water_units||0
+                    }, { onConflict: 'property_name, billing_month' });
                 },
                 async updateRoom(room) { if(!this.isAdmin) return; await dbClient.from('rooms').update({ nickname: room.nickname, base_rent: Number(room.base_rent) }).eq('id', room.id); },
                 async saveRecord(room) {
                     if (!this.isAdmin) return;
                     const pName = room.property_name;
-                    // ★★★ 把當下算出來的總應付金額與電費鎖死存入資料庫，確保下個月結算絕對精準 ★★★
                     const p = { 
                         room_id: room.id, billing_month: this.currentMonth, rent_paid: room.record.rent_paid, 
-                        amount_paid: room.record.amount_paid||0, water_fee: room.record.water_fee||0, 
+                        amount_paid: room.record.amount_paid||0, water_fee: room.record.water_fee||0, water_units: room.record.water_units||0,
                         meter_reading: room.elecMode === 'reading' ? (room.record.meter_reading||0) : 0, 
                         manual_units: room.elecMode === 'manual' ? (room.record.manual_units||0) : 0, 
-                        payment_account: room.record.payment_account,
-                        total_payable: this.getTotalPayable(pName, room),
+                        payment_account: room.record.payment_account, total_payable: this.getTotalPayable(pName, room),
                         electricity_fee: this.calculateActualFee(pName, room)
                     };
                     await dbClient.from('monthly_records').upsert(p, { onConflict: 'room_id, billing_month' });
                 },
                 async togglePaid(room) { room.record.rent_paid = !room.record.rent_paid; await this.saveRecord(room); },
-                
-                // ★★★ 修復退租按鈕：徹底清空舊帳單 ★★★
                 async resetTenant(room) { 
                     if (!confirm('退租將清空名字、本月帳單，並重置起點讀數，確定？')) return; 
                     await dbClient.from('rooms').update({ nickname: '新租客', initial_meter_reading: room.record.meter_reading || 0 }).eq('id', room.id); 
                     await dbClient.from('monthly_records').delete().match({ room_id: room.id, billing_month: this.currentMonth });
                     this.fetchData(); 
                 },
-                
                 async addPartner() { if (!this.newPartnerName) return; await dbClient.from('partners').insert([{ name: this.newPartnerName }]); this.newPartnerName = ''; this.fetchData(); },
                 async updatePartnerName(p, event) {
                     const newName = event.target.value;
