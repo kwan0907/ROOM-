@@ -1,0 +1,20 @@
+name: Supabase Keep Alive
+
+# 設定觸發條件
+on:
+  schedule:
+    # 使用 Cron 語法：每 2 天的 UTC 時間凌晨 0 點 (香港時間早上 8 點) 執行一次
+    - cron: '0 0 */2 * *'
+  # 允許我們隨時手動點擊按鈕來測試
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 發送 API 請求到 Supabase
+        run: |
+          curl -X GET 'https://duneupvlgjxbqkuosaqp.supabase.co/rest/v1/rooms?select=id&limit=1' \
+          -H 'apikey: sb_publishable_FgzUFLNiaF2cOrheTzYsAA_3oU2LBaG' \
+          -H 'Authorization: Bearer sb_publishable_FgzUFLNiaF2cOrheTzYsAA_3oU2LBaG'
