@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>簡樸房終極管理系統 V22 (智能水費版)</title>
+    <title>簡樸房終極財稅管理系統 V30</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         [v-cloak] { display: none; }
-        body { background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .tab-active { background-color: #2563eb; color: white; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
-        .filter-active { background-color: #1e293b; color: white; border-color: #1e293b; }
+        .tab-active { background-color: #2563eb; color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .filter-active { background-color: #0f172a; color: white; border-color: #0f172a; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="text-slate-800 font-sans pb-24">
     <div id="app" v-cloak class="max-w-md mx-auto md:max-w-5xl md:p-6">
         
+        <!-- 登入介面 -->
         <div v-if="!session" class="p-6 mt-10 bg-white rounded-3xl shadow-xl mx-4">
-            <h2 class="text-2xl font-black text-center mb-8">{{ isRegistering ? '註冊觀看帳號' : '系統登入' }}</h2>
+            <h2 class="text-2xl font-black text-center mb-8">{{ isRegistering ? '註冊觀看帳號' : '財稅系統登入' }}</h2>
             <div class="space-y-4">
                 <input v-model="email" type="email" placeholder="電郵地址" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                 <input v-model="password" type="password" placeholder="密碼" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all">
@@ -33,26 +34,40 @@
             </div>
         </div>
 
+        <!-- 主系統內容 -->
         <div v-else>
+            <!-- 頂部導航欄 -->
             <div class="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-4 py-3 shadow-sm flex justify-between items-center">
                 <div class="flex flex-col">
-                    <h1 class="text-lg font-black leading-tight">簡樸房系統</h1>
-                    <span class="text-[10px] font-bold text-blue-600 uppercase">{{ currentUserRole === 'admin' ? '管理員' : '合夥觀看者' }}</span>
+                    <h1 class="text-lg font-black leading-tight">簡樸房財稅控制台</h1>
+                    <span class="text-[10px] font-bold text-blue-600 uppercase">{{ currentUserRole === 'admin' ? '高級管理員' : '合夥觀看者' }}</span>
                 </div>
-                <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <!-- 月份切換器 (僅在租務模式有用) -->
+                <div v-if="activeTab === 'rent'" class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
                     <button @click="changeMonth(-1)" class="p-2 text-slate-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg></button>
                     <span class="px-3 font-black text-slate-700 text-xs">{{ displayMonth }}</span>
                     <button @click="changeMonth(1)" class="p-2 text-slate-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg></button>
                 </div>
+                <!-- 稅務年度切換器 (在報稅模式顯示) -->
+                <div v-if="activeTab === 'tax'" class="flex items-center bg-amber-100 p-1 rounded-xl border border-amber-200">
+                    <select v-model="selectedTaxYear" @change="fetchExpenseData" class="bg-transparent font-black text-amber-900 text-xs px-2 py-1 outline-none">
+                        <option value="2025/26">2025/26 評稅年度</option>
+                        <option value="2026/27">2026/27 評稅年度</option>
+                        <option value="2027/28">2027/28 評稅年度</option>
+                    </select>
+                </div>
                 <button @click="handleLogout" class="p-2 text-slate-400 hover:text-red-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
             </div>
 
-            <div class="flex gap-2 px-4 mb-4 mt-2">
-                <button @click="activeTab = 'rent'" :class="{'tab-active': activeTab === 'rent'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 shadow-sm transition-all">🏠 租務</button>
-                <button @click="activeTab = 'profit'" :class="{'tab-active': activeTab === 'profit'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 shadow-sm transition-all">💰 分紅</button>
+            <!-- 主分頁標籤 -->
+            <div class="flex gap-1.5 px-4 mb-4 mt-2">
+                <button @click="activeTab = 'rent'" :class="{'tab-active': activeTab === 'rent'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 shadow-sm transition-all">🏠 租務運作</button>
+                <button @click="activeTab = 'profit'" :class="{'tab-active': activeTab === 'profit'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 shadow-sm transition-all">💰 月度分紅</button>
+                <button @click="activeTab = 'tax'" :class="{'tab-active': activeTab === 'tax'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 shadow-sm transition-all">📊 財務報稅</button>
                 <button v-if="isAdmin" @click="activeTab = 'settings'" :class="{'tab-active': activeTab === 'settings'}" class="flex-1 py-3 rounded-2xl text-xs font-bold bg-white text-slate-500 shadow-sm transition-all">⚙️ 設定</button>
             </div>
 
+            <!-- TAB 1: 租務運作 (保留你原本好用的核心前端邏輯) -->
             <div v-if="activeTab === 'rent'">
                 <div class="flex gap-2 px-4 mb-4 overflow-x-auto no-scrollbar py-1">
                     <button @click="selectedProp = '全部'" :class="selectedProp === '全部' ? 'filter-active' : 'bg-white text-slate-500'" class="px-5 py-2 rounded-full text-xs font-black border border-slate-200 shadow-sm whitespace-nowrap transition-all">全部</button>
@@ -60,39 +75,40 @@
                 </div>
 
                 <div v-for="(rooms, propName) in filteredGroupedRooms" :key="propName" class="px-4 mb-8">
-                    <div class="mb-4 bg-slate-800 text-white p-5 rounded-[2rem] shadow-lg">
+                    <!-- 大單拆數面板 -->
+                    <div class="mb-4 bg-slate-900 text-white p-5 rounded-[2rem] shadow-lg">
                         <div class="flex justify-between items-center mb-3">
                             <h2 class="text-xl font-black">{{ propName }}</h2>
                         </div>
-                        
-                        <div class="grid grid-cols-4 gap-2 bg-slate-700 p-3 rounded-2xl">
-                            <div class="col-span-2 grid grid-cols-2 bg-blue-900/30 rounded-xl p-2 border border-blue-800/50">
-                                <div class="text-center border-r border-blue-800/50 pr-1">
+                        <div class="grid grid-cols-4 gap-2 bg-slate-850 p-3 rounded-2xl">
+                            <div class="col-span-2 grid grid-cols-2 bg-blue-950/40 rounded-xl p-2 border border-blue-900/50">
+                                <div class="text-center border-r border-blue-900/50 pr-1">
                                     <label class="text-[8px] text-blue-300 block mb-1 font-bold">大電單($)</label>
-                                    <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                    <input v-model="electricityTotals[propName].total_bill_amount" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none text-blue-100">
                                 </div>
                                 <div class="text-center pl-1">
                                     <label class="text-[8px] text-blue-300 block mb-1 font-bold">總電度</label>
-                                    <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                    <input v-model="electricityTotals[propName].total_units_used" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none text-blue-100">
                                 </div>
                             </div>
-                            <div class="col-span-2 grid grid-cols-2 bg-cyan-900/30 rounded-xl p-2 border border-cyan-800/50">
-                                <div class="text-center border-r border-cyan-800/50 pr-1">
+                            <div class="col-span-2 grid grid-cols-2 bg-cyan-950/40 rounded-xl p-2 border border-cyan-900/50">
+                                <div class="text-center border-r border-cyan-900/50 pr-1">
                                     <label class="text-[8px] text-cyan-300 block mb-1 font-bold">大水單($)</label>
-                                    <input v-model="electricityTotals[propName].total_water_bill" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                    <input v-model="electricityTotals[propName].total_water_bill" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none text-cyan-100">
                                 </div>
                                 <div class="text-center pl-1">
                                     <label class="text-[8px] text-cyan-300 block mb-1 font-bold">總水度</label>
-                                    <input v-model="electricityTotals[propName].total_water_units" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none">
+                                    <input v-model="electricityTotals[propName].total_water_units" @blur="saveElectricityTotal(propName)" :disabled="!isAdmin" type="number" class="w-full bg-transparent text-center text-sm font-black outline-none text-cyan-100">
                                 </div>
                             </div>
                         </div>
                         <div class="mt-2 flex justify-between text-[9px] font-bold px-2">
-                            <span class="text-blue-400">電費單價: ${{ calcRate(propName, 'elec') }}/度</span>
-                            <span class="text-cyan-400">水費單價: ${{ calcRate(propName, 'water') }}/度</span>
+                            <span class="text-blue-400">電單價: ${{ calcRate(propName, 'elec') }}/度</span>
+                            <span class="text-cyan-400">水單價: ${{ calcRate(propName, 'water') }}/度</span>
                         </div>
                     </div>
 
+                    <!-- 房間卡片 -->
                     <div class="space-y-4">
                         <div v-for="room in rooms" :key="room.id" class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
                             <div class="flex justify-between items-start mb-4">
@@ -109,11 +125,10 @@
                             <div class="space-y-3 mb-6">
                                 <div class="bg-slate-50 p-3 rounded-2xl flex justify-between items-center">
                                     <span class="text-xs font-bold text-slate-500">底租</span>
-                                    <div class="flex items-center text-sm font-black text-slate-800">
-                                        $<input v-model="room.base_rent" @blur="updateRoom(room)" :disabled="!isAdmin" type="number" class="w-16 text-right bg-transparent outline-none">
-                                    </div>
+                                    <div class="flex items-center text-sm font-black text-slate-800">$<input v-model="room.base_rent" @blur="updateRoom(room)" :disabled="!isAdmin" type="number" class="w-16 text-right bg-transparent outline-none"></div>
                                 </div>
 
+                                <!-- 電費 -->
                                 <div class="bg-blue-50/50 p-4 rounded-3xl border border-blue-100">
                                     <div class="flex justify-between items-center mb-3">
                                         <span class="text-xs font-black text-blue-700">⚡ 電費結算</span>
@@ -133,6 +148,7 @@
                                     </div>
                                 </div>
 
+                                <!-- 水費 -->
                                 <div class="bg-cyan-50/50 p-4 rounded-3xl border border-cyan-100">
                                     <div class="flex justify-between items-center mb-2">
                                         <span class="text-xs font-black text-cyan-700">💧 水費結算</span>
@@ -155,10 +171,11 @@
                                 <div class="flex justify-between items-center px-2 pt-2 border-t border-slate-100"><span class="text-sm font-black text-slate-800">本月應收總計</span><span class="text-2xl font-black text-blue-800 tracking-tighter">${{ getTotalPayable(propName, room) }}</span></div>
                             </div>
 
+                            <!-- 收款與結賬 -->
                             <div class="bg-slate-900 p-4 rounded-[2rem] shadow-xl">
                                 <div class="flex justify-between items-center mb-4">
                                     <span class="text-xs font-bold text-slate-400">💰 租客實際已付</span>
-                                    <div class="flex items-center text-white text-2xl font-black italic">$<input v-model="room.record.amount_paid" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="0" class="w-24 text-right bg-transparent outline-none border-b-2 border-slate-700 focus:border-blue-500 transition-colors"></div>
+                                    <div class="flex items-center text-white text-2xl font-black italic">$<input v-model="room.record.amount_paid" @blur="saveRecord(room)" :disabled="!isAdmin" type="number" placeholder="0" class="w-24 text-right bg-transparent outline-none border-b-2 border-slate-700 focus:border-blue-500 transition-colors text-white"></div>
                                 </div>
                                 <div class="flex gap-2">
                                     <select v-if="isAdmin" v-model="room.record.payment_account" @change="saveRecord(room)" class="flex-1 bg-slate-800 text-[10px] text-white font-bold p-3 rounded-2xl border-none outline-none">
@@ -175,43 +192,16 @@
                 </div>
             </div>
 
+            <!-- TAB 2: 月度分紅面版 (即時營運分成) -->
             <div v-if="activeTab === 'profit'" class="px-4 pb-10">
-                <div v-if="isAdmin" class="bg-white p-5 rounded-3xl shadow-sm mb-6 border border-orange-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">🛠️ 新增雜費墊支</h3>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <select v-model="newExpense.room_id" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                            <option value="">選擇房間</option>
-                            <option v-for="r in rawRooms" :key="r.id" :value="r.id">{{ r.property_name }}-{{ r.room_name }}</option>
-                        </select>
-                        <select v-model="newExpense.partner_name" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                            <option value="">由誰墊支？</option>
-                            <option v-for="p in partners" :key="p.id" :value="p.name">{{ p.name }}</option>
-                        </select>
-                        <input v-model="newExpense.amount" type="number" placeholder="金額 ($)" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                        <input v-model="newExpense.description" placeholder="用途" class="p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm">
-                    </div>
-                    <button @click="addExpense" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 shadow-md">新增墊支</button>
-                </div>
-
-                <div v-if="expenses.length > 0" class="mb-6 bg-orange-50 p-4 rounded-3xl border border-orange-100">
-                    <p class="text-sm font-black text-orange-800 mb-2">本月墊支清單</p>
-                    <div v-for="exp in expenses" :key="exp.id" class="flex justify-between items-center text-xs font-bold text-slate-700 mb-2 border-b border-orange-200 pb-2">
-                        <span>{{ getRoomName(exp.room_id) }} - {{ exp.description }} <span class="bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full text-[9px]">{{ exp.partner_name }} 代墊</span></span>
-                        <div class="flex items-center gap-2">
-                            <span class="text-orange-600">${{ exp.amount }}</span>
-                            <button v-if="isAdmin" @click="deleteExpense(exp.id)" class="text-red-400 font-black text-lg ml-2 hover:text-red-600">&times;</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900 p-8 rounded-[3rem] shadow-2xl text-white border border-slate-800">
+                <div class="bg-slate-900 p-8 rounded-[3rem] shadow-2xl text-white border border-slate-800 mt-4">
                     <h2 class="text-3xl font-black mb-1 italic text-blue-400">Profit Report</h2>
-                    <p class="text-[10px] text-slate-500 mb-8 uppercase tracking-widest font-bold">Property Settlement</p>
+                    <p class="text-[10px] text-slate-500 mb-8 uppercase tracking-widest font-bold">Property Settlement ({{ displayMonth }})</p>
                     <div v-for="(pData, pName) in propertyReport" :key="pName" class="mb-12 last:mb-0">
                         <div class="flex justify-between items-end mb-6">
                             <h3 class="text-4xl font-black tracking-tighter">{{ pName }}</h3>
                             <div class="text-right">
-                                <span class="text-[10px] text-slate-500 block uppercase">物業淨利</span>
+                                <span class="text-[10px] text-slate-500 block uppercase">物業單月淨利</span>
                                 <span class="text-2xl font-black text-blue-400">+${{ pData.netProfit }}</span>
                             </div>
                         </div>
@@ -220,7 +210,7 @@
                                 <div><span class="text-sm font-black block text-slate-200">{{ share.name }}</span><span class="text-[10px] text-slate-500">{{ share.percent }}% 股權</span></div>
                                 <div class="text-right">
                                     <span class="text-xl font-black" :class="share.profit >= 0 ? 'text-green-400' : 'text-red-400'">${{ share.profit }}</span>
-                                    <span v-if="share.reimbursement > 0" class="block text-[9px] text-orange-400 font-bold mt-1">代墊返還: +${{ share.reimbursement }}</span>
+                                    <span v-if="share.reimbursement > 0" class="block text-[9px] text-orange-400 font-bold mt-1">當月墊支返還: +${{ share.reimbursement }}</span>
                                 </div>
                             </div>
                         </div>
@@ -228,8 +218,125 @@
                 </div>
             </div>
 
-            <div v-if="activeTab === 'settings' && isAdmin" class="px-4 space-y-8 pb-20">
+            <!-- TAB 3: 🛠️ 全新「財務報稅」分頁 (符合香港稅務局規範) -->
+            <div v-if="activeTab === 'tax'" class="px-4 pb-10 space-y-6">
+                
+                <!-- 1. 記帳憑證/傳票輸入面板 (會計準則規範) -->
+                <div v-if="isAdmin" class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 mt-4">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">📑 錄入公司完整收支記帳憑證</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">交易日期</label>
+                            <input v-model="companyExpenseForm.expense_date" type="date" class="w-full p-3 bg-slate-50 rounded-xl font-bold text-sm outline-none border border-slate-100">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">會計科目 (報稅分類)</label>
+                            <select v-model="companyExpenseForm.category_code" class="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm border border-slate-100">
+                                <option value="">請選擇科目</option>
+                                <option v-for="cat in accountCategories" :key="cat.code" :value="cat.code">[{{ cat.type === 'expense' ? '支' : '資' }}] {{ cat.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">歸屬大廈/物業</label>
+                            <select v-model="companyExpenseForm.property_name" class="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm border border-slate-100">
+                                <option value="">公司整體 / 不指定</option>
+                                <option v-for="p in propertyNames" :key="p" :value="p">{{ p }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">支付/墊支方</label>
+                            <select v-model="companyExpenseForm.paid_by_partner" class="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm border border-slate-100">
+                                <option value="公司戶口">公司銀行戶口</option>
+                                <option v-for="p in partners" :key="p.id" :value="p.name">{{ p.name }} (個人墊支)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">交易金額 ($)</label>
+                            <input v-model="companyExpenseForm.amount" type="number" placeholder="HKD" class="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm border border-slate-100">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">具體摘要交易用途 (報稅備查)</label>
+                            <input v-model="companyExpenseForm.description" placeholder="例如：美聯地產一號房簽約佣金 / 順豐速運寄送合約" class="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold text-sm border border-slate-100">
+                        </div>
+                    </div>
+                    <button @click="submitCompanyExpense" class="w-full bg-slate-900 text-white font-black py-3 rounded-xl shadow-md active:scale-98 transition-all">確認入帳 (記入香港會計總帳)</button>
+                </div>
+
+                <!-- 2. 香港稅務局 IRD 格式：公司利潤與開支總表 -->
+                <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-xl font-black text-slate-900">📊 {{ selectedTaxYear }} 年度損益 P&L 摘要</h3>
+                            <p class="text-[10px] font-bold text-slate-400">符合 IRD 報稅標準 (每年4月1日至翌年3月31日)</p>
+                        </div>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold">自動試算</span>
+                    </div>
+
+                    <!-- 營業收入項目 -->
+                    <div class="mb-6">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">一、 營業總收入 (Turnover)</p>
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm font-bold border-b border-slate-100 pb-1 text-slate-600"><span>所有房間底租總收入</span><span>${{ taxReport.totalRentIncome }}</span></div>
+                            <div class="flex justify-between text-sm font-bold border-b border-slate-100 pb-1 text-slate-600"><span>水電回籠總收入</span><span>${{ taxReport.totalUtilIncome }}</span></div>
+                            <div class="flex justify-between text-base font-black text-blue-600 pt-1"><span>營運收入總計</span><span>${{ taxReport.totalTurnover }}</span></div>
+                        </div>
+                    </div>
+
+                    <!-- 扣稅開支項目 -->
+                    <div class="mb-6">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">二、 稅務局認可經營扣稅開支 (Deductible Expenses)</p>
+                        <div class="space-y-2">
+                            <div v-for="(amt, code) in taxReport.expenseCategoryTotals" :key="code" class="flex justify-between text-sm font-bold border-b border-slate-100 pb-1 text-slate-600">
+                                <span>{{ getCategoryNameByCode(code) }}</span>
+                                <span class="text-red-500">-${{ amt }}</span>
+                            </div>
+                            <div v-if="Object.keys(taxReport.expenseCategoryTotals).length === 0" class="text-xs text-slate-400 py-2 italic text-center">暫無此類別開支紀錄</div>
+                            <div class="flex justify-between text-base font-black text-red-600 pt-1"><span>扣稅開支總計</span><span>-${{ taxReport.totalExpenses }}</span></div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4 border-dashed">
+
+                    <!-- 應評稅利潤 -->
+                    <div class="bg-slate-900 p-5 rounded-2xl text-white flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">預估應評稅利潤 / 虧損</p>
+                            <p class="text-xs text-slate-400">(Before Tax Net Profit)</p>
+                        </div>
+                        <span class="text-2xl font-black tracking-tight" :class="taxReport.netTaxableProfit >= 0 ? 'text-green-400' : 'text-red-400'">
+                            ${{ taxReport.netTaxableProfit }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 3. 本年度會計明細流水賬 (審計備查用) -->
                 <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <p class="text-sm font-black text-slate-800 mb-4">📜 {{ selectedTaxYear }} 年度完整會計總帳流水 (共 {{ companyExpenses.length }} 筆)</p>
+                    <div class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                        <div v-for="exp in companyExpenses" :key="exp.id" class="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center text-xs font-bold">
+                            <div class="space-y-1 w-2/3">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md text-[9px]">{{ exp.expense_date }}</span>
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md text-[9px]">{{ getCategoryNameByCode(exp.category_code) }}</span>
+                                    <span v-if="exp.property_name" class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md text-[9px]">{{ exp.property_name }}</span>
+                                </div>
+                                <p class="text-slate-700 text-xs font-black truncate">{{ exp.description }}</p>
+                                <p class="text-[9px] text-slate-400">經手方: {{ exp.paid_by_partner }}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-slate-900 text-sm font-black">${{ exp.amount }}</span>
+                                <button v-if="isAdmin" @click="deleteCompanyExpense(exp.id)" class="text-red-400 font-black text-lg hover:text-red-600 p-1">&times;</button>
+                            </div>
+                        </div>
+                        <div v-if="companyExpenses.length === 0" class="text-center text-slate-400 py-8 text-xs italic">本年度暫無全局收支流水。</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: 設定面板 (維持原本結構) -->
+            <div v-if="activeTab === 'settings' && isAdmin" class="px-4 space-y-8 pb-20">
+                <!-- 賬號權限 -->
+                <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 mt-4">
                     <h3 class="text-xl font-black mb-6 flex items-center gap-2">🔐 帳號權限管理</h3>
                     <div v-for="user in usersList" :key="user.id" class="mb-6 p-4 border border-slate-100 rounded-3xl">
                         <div class="flex justify-between items-center mb-3">
@@ -251,6 +358,7 @@
                     </div>
                 </div>
 
+                <!-- 股份分配 -->
                 <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
                     <h3 class="text-xl font-black mb-6">🏢 樓宇股份分配</h3>
                     <div v-for="pName in propertyNames" :key="pName" class="mb-6 p-4 bg-slate-50 rounded-3xl border border-slate-200">
@@ -265,6 +373,7 @@
                     </div>
                 </div>
 
+                <!-- 合夥人名單 -->
                 <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
                     <h3 class="text-xl font-black mb-6">👤 合夥人名單</h3>
                     <div class="flex gap-2 mb-6">
@@ -279,6 +388,7 @@
                     </div>
                 </div>
 
+                <!-- 建立新房 -->
                 <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
                     <h3 class="text-xl font-black mb-6 italic">Rooms Control</h3>
                     <div class="grid grid-cols-2 gap-3 mb-3">
@@ -304,11 +414,17 @@
                     session: null, currentUserRole: 'viewer', activeTab: 'rent',
                     selectedProp: '全部', email: '', password: '', loading: false, isRegistering: false,
                     currentMonth: new Date().toISOString().slice(0, 7),
+                    
+                    // 全新稅務控配變數
+                    selectedTaxYear: '2026/27',
+                    accountCategories: [],
+                    companyExpenses: [],
+                    companyExpenseForm: { expense_date: new Date().toISOString().slice(0, 10), category_code: '', property_name: '', amount: '', description: '', paid_by_partner: '公司戶口' },
+                    allHistoricalRecordsForTax: [], // 存放全年度租務數據算收入
+                    
                     rawRooms: [], electricityTotals: {}, partners: [], propShares: [], 
                     userRoomAccess: [], usersList: [], newPartnerName: '',
-                    newRoom: { property_name: '', room_name: '', base_rent: '' },
-                    newExpense: { room_id: '', partner_name: '', amount: '', description: '' },
-                    expenses: []
+                    newRoom: { property_name: '', room_name: '', base_rent: '' }
                 }
             },
             computed: {
@@ -325,6 +441,8 @@
                     });
                     return groups;
                 },
+                
+                // TAB 2: 月度分紅利潤表 (單月營運分帳用，不受全局稅務影響)
                 propertyReport() {
                     let report = {};
                     this.propertyNames.forEach(pName => {
@@ -332,17 +450,80 @@
                         const income = rooms.reduce((s, r) => s + (Number(r.record.amount_paid)||0), 0);
                         const elec = rooms.reduce((s, r) => s + this.calculateActualFee(pName, r), 0);
                         const water = rooms.reduce((s, r) => s + this.calculateWaterFee(pName, r), 0);
-                        const expTotal = this.expenses.filter(e => rooms.some(r => r.id === e.room_id)).reduce((s, e) => s + Number(e.amount), 0);
+                        
+                        // 當月單棟大廈的全局開支項目
+                        const expTotal = this.companyExpenses.filter(e => e.property_name === pName && e.expense_date.startsWith(this.currentMonth)).reduce((s, e) => s + Number(e.amount), 0);
                         
                         const netProfit = income - elec - water - expTotal;
                         const partnerShares = this.partners.map(p => {
                             const percent = p.shares[pName] || 0;
-                            const reimbursement = this.expenses.filter(e => e.partner_name === p.name && rooms.some(r => r.id === e.room_id)).reduce((s, e) => s + Number(e.amount), 0);
+                            // 檢查個人在此棟樓該月份的墊支返還
+                            const reimbursement = this.companyExpenses.filter(e => e.paid_by_partner === p.name && e.property_name === pName && e.expense_date.startsWith(this.currentMonth)).reduce((s, e) => s + Number(e.amount), 0);
                             return { name: p.name, percent, profit: Math.round(netProfit * (percent/100)), reimbursement };
                         });
                         report[pName] = { netProfit, partnerShares };
                     });
                     return report;
+                },
+
+                // TAB 3: 🛠️ 全自動香港稅務報表試算引擎
+                taxReport() {
+                    // 1. 計算該稅務年度內所有已收取的租客現金
+                    // 篩選屬於該稅務年度的租務月度紀錄
+                    const filteredRecords = this.allHistoricalRecordsForTax.filter(rec => {
+                        const m = rec.billing_month; // Format "YYYY-MM"
+                        const year = parseInt(m.split('-')[0]);
+                        const month = parseInt(m.split('-')[1]);
+                        
+                        if (this.selectedTaxYear === '2025/26') {
+                            return (year === 2025 && month >= 4) || (year === 2026 && month <= 3);
+                        } else if (this.selectedTaxYear === '2026/27') {
+                            return (year === 2026 && month >= 4) || (year === 2027 && month <= 3);
+                        } else if (this.selectedTaxYear === '2027/28') {
+                            return (year === 2027 && month >= 4) || (year === 2028 && month <= 3);
+                        }
+                        return false;
+                    });
+
+                    // 拆分實際底租與收回的水電費
+                    let totalRentIncome = 0;
+                    let totalUtilIncome = 0;
+
+                    filteredRecords.forEach(rec => {
+                        const paid = Number(rec.amount_paid) || 0;
+                        const base = Number(rec.total_payable) - (Number(rec.electricity_fee)||0) - (Number(rec.water_fee)||0); // 精確到底租原價
+                        
+                        if (paid >= base) {
+                            totalRentIncome += base;
+                            totalUtilIncome += (paid - base); // 超過底租的部分屬於代收水電回籠
+                        } else {
+                            totalRentIncome += paid; // 欠租情況下，優先填補底租
+                        }
+                    });
+
+                    // 2. 統計記帳憑證開支
+                    let expenseCategoryTotals = {};
+                    let totalExpenses = 0;
+
+                    this.companyExpenses.forEach(exp => {
+                        const cat = this.accountCategories.find(c => c.code === exp.category_code);
+                        if (cat && cat.is_tax_deductible) { // 僅加總稅務局認可扣稅項目
+                            expenseCategoryTotals[exp.category_code] = (expenseCategoryTotals[exp.category_code] || 0) + Number(exp.amount);
+                            totalExpenses += Number(exp.amount);
+                        }
+                    });
+
+                    const totalTurnover = totalRentIncome + totalUtilIncome;
+                    const netTaxableProfit = totalTurnover - totalExpenses;
+
+                    return {
+                        totalRentIncome,
+                        totalUtilIncome,
+                        totalTurnover,
+                        expenseCategoryTotals,
+                        totalExpenses,
+                        netTaxableProfit
+                    };
                 }
             },
             async mounted() {
@@ -350,7 +531,9 @@
                 this.session = data.session;
                 if (this.session) {
                     await this.checkMyRole();
+                    await this.fetchBaseCategories();
                     this.fetchData();
+                    this.fetchExpenseData();
                 }
             },
             methods: {
@@ -366,7 +549,7 @@
                         }
                         if (res.error) throw res.error;
                         this.session = res.data.session;
-                        if (this.session) { await this.checkMyRole(); this.fetchData(); }
+                        if (this.session) { await this.checkMyRole(); await this.fetchBaseCategories(); this.fetchData(); this.fetchExpenseData(); }
                     } catch (e) { alert(e.message); } finally { this.loading = false; }
                 },
                 async checkMyRole() {
@@ -378,27 +561,76 @@
                         this.currentUserRole = 'viewer';
                     }
                 },
+                async fetchBaseCategories() {
+                    const { data } = await dbClient.from('account_categories').select('*');
+                    this.accountCategories = data || [];
+                },
+                // 獲取報稅全局收支數據
+                async fetchExpenseData() {
+                    // 1. 抓取全局費用表
+                    const { data: expData } = await dbClient.from('company_expenses').select('*').eq('tax_year', this.selectedTaxYear).order('expense_date', { ascending: false });
+                    this.companyExpenses = expData || [];
+
+                    // 2. 抓取全歷史租務，以便跨月份動態統計某一整個報稅年度的總營業額
+                    const { data: allRecs } = await dbClient.from('monthly_records').select('*');
+                    this.allHistoricalRecordsForTax = allRecs || [];
+                },
+                async submitCompanyExpense() {
+                    if (!this.isAdmin || !this.companyExpenseForm.category_code || !this.companyExpenseForm.amount) {
+                        alert('請填寫完整日期、科目與金額！');
+                        return;
+                    }
+                    const payload = {
+                        expense_date: this.companyExpenseForm.expense_date,
+                        category_code: this.companyExpenseForm.category_code,
+                        property_name: this.companyExpenseForm.property_name || null,
+                        amount: Number(this.companyExpenseForm.amount),
+                        description: this.companyExpenseForm.description || '未命名交易',
+                        paid_by_partner: this.companyExpenseForm.paid_by_partner
+                    };
+                    const { error } = await dbClient.from('company_expenses').insert([payload]);
+                    if (error) alert(error.message);
+                    else {
+                        this.companyExpenseForm.amount = '';
+                        this.companyExpenseForm.description = '';
+                        this.fetchExpenseData();
+                    }
+                },
+                async deleteCompanyExpense(id) {
+                    if (confirm('確定刪除此筆公司記帳傳票？這將直接影響報稅利潤試算。')) {
+                        await dbClient.from('company_expenses').delete().eq('id', id);
+                        this.fetchExpenseData();
+                    }
+                },
+                getCategoryNameByCode(code) {
+                    const cat = this.accountCategories.find(c => c.code === code);
+                    return cat ? cat.name : code;
+                },
+                getCategoryNameByCode(code) {
+                    const cat = this.accountCategories.find(c => c.code === code);
+                    return cat ? cat.name : code;
+                },
+
+                // 核心租務運作機制 (完整保留)
                 async fetchData() {
                     const prevMonth = this.getRelativeMonth(-1);
                     const resRooms = await dbClient.from('rooms').select('*').order('room_name');
                     const tempRooms = resRooms.data || [];
                     const tempPropertyNames = [...new Set(tempRooms.map(r => r.property_name))].sort();
 
-                    const [resRecs, resElec, resParts, resPropShares, resPrevRecs, resAccess, resUsers, resExp] = await Promise.all([
+                    const [resRecs, resElec, resParts, resPropShares, resPrevRecs, resAccess, resUsers] = await Promise.all([
                         dbClient.from('monthly_records').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('property_electricity').select('*').eq('billing_month', this.currentMonth),
                         dbClient.from('partners').select('*').order('name'),
                         dbClient.from('property_shares').select('*'),
                         dbClient.from('monthly_records').select('*').eq('billing_month', prevMonth),
                         dbClient.from('user_room_access').select('*'),
-                        dbClient.from('user_roles').select('*'),
-                        dbClient.from('expenses').select('*').eq('billing_month', this.currentMonth)
+                        dbClient.from('user_roles').select('*')
                     ]);
 
                     this.propShares = resPropShares.data || [];
                     this.userRoomAccess = resAccess.data || [];
                     this.usersList = resUsers.data || [];
-                    this.expenses = resExp.data || [];
                     
                     this.partners = (resParts.data || []).map(p => {
                         let shares = {};
@@ -418,6 +650,8 @@
                         const rec = (resRecs.data || []).find(r => r.room_id === room.id);
                         const prevRec = (resPrevRecs.data || []).find(r => r.room_id === room.id);
                         room.prevReading = prevRec?.meter_reading || room.initial_meter_reading || 0;
+                        
+                        // 修正：債務滾存套用至全房間
                         let prevDebt = 0;
                         if (prevRec) {
                             let prevPayable = Number(prevRec.total_payable);
@@ -470,14 +704,6 @@
                     if (type === 'elec') return (t && t.total_units_used) ? (t.total_bill_amount / t.total_units_used).toFixed(2) : '0.00';
                     if (type === 'water') return (t && t.total_water_units) ? (t.total_water_bill / t.total_water_units).toFixed(2) : '0.00';
                 },
-                async addExpense() {
-                    if (!this.isAdmin || !this.newExpense.room_id || !this.newExpense.partner_name || !this.newExpense.amount) return;
-                    await dbClient.from('expenses').insert([{ billing_month: this.currentMonth, room_id: this.newExpense.room_id, partner_name: this.newExpense.partner_name, amount: Number(this.newExpense.amount), description: this.newExpense.description }]);
-                    this.newExpense = { room_id: '', partner_name: '', amount: '', description: '' };
-                    this.fetchData();
-                },
-                async deleteExpense(id) { if(confirm('確定刪除此墊支紀錄？')) { await dbClient.from('expenses').delete().eq('id', id); this.fetchData(); } },
-                getRoomName(id) { const r = this.rawRooms.find(x => x.id === id); return r ? r.room_name : ''; },
                 async saveElectricityTotal(pName) {
                     const t = this.electricityTotals[pName];
                     await dbClient.from('property_electricity').upsert({ 
@@ -485,6 +711,7 @@
                         total_bill_amount: t.total_bill_amount||0, total_units_used: t.total_units_used||0,
                         total_water_bill: t.total_water_bill||0, total_water_units: t.total_water_units||0
                     }, { onConflict: 'property_name, billing_month' });
+                    this.fetchExpenseData();
                 },
                 async updateRoom(room) { if(!this.isAdmin) return; await dbClient.from('rooms').update({ nickname: room.nickname, base_rent: Number(room.base_rent) }).eq('id', room.id); },
                 async saveRecord(room) {
@@ -499,6 +726,7 @@
                         electricity_fee: this.calculateActualFee(pName, room)
                     };
                     await dbClient.from('monthly_records').upsert(p, { onConflict: 'room_id, billing_month' });
+                    this.fetchExpenseData();
                 },
                 async togglePaid(room) { room.record.rent_paid = !room.record.rent_paid; await this.saveRecord(room); },
                 async resetTenant(room) { 
@@ -514,10 +742,10 @@
                     await dbClient.from('partners').update({ name: newName }).eq('id', p.id);
                     await Promise.all([
                         dbClient.from('property_shares').update({ partner_name: newName }).eq('partner_name', p.name),
-                        dbClient.from('expenses').update({ partner_name: newName }).eq('partner_name', p.name),
+                        dbClient.from('company_expenses').update({ paid_by_partner: newName }).eq('paid_by_partner', p.name),
                         dbClient.from('monthly_records').update({ payment_account: newName }).eq('payment_account', p.name)
                     ]);
-                    this.fetchData();
+                    this.fetchData(); this.fetchExpenseData();
                 },
                 async savePropertyShare(pN, partN, val) { await dbClient.from('property_shares').upsert({ property_name: pN, partner_name: partN, percentage: Number(val) }, { onConflict: 'property_name, partner_name' }); },
                 async updateUserRole(u) { await dbClient.from('user_roles').update({ role: u.role }).eq('id', u.id); },
